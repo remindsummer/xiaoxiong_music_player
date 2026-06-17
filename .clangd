@@ -1,0 +1,17 @@
+CompileFlags:
+  Add:
+    - -std=c++17
+    - --target=x86_64-pc-windows-msvc
+    - -Ibuild
+    - -Ibuild/xxMusic_autogen/include
+    - -IC:/Qt/6.9.3/msvc2022_64/include
+    - -IC:/Qt/6.9.3/msvc2022_64/include/QtCore
+    - -IC:/Qt/6.9.3/msvc2022_64/include/QtGui
+    - -IC:/Qt/6.9.3/msvc2022_64/include/QtQml
+    - -IC:/Qt/6.9.3/msvc2022_64/include/QtQuick
+    - -DQT_CORE_LIB
+    - -DQT_GUI_LIB
+    - -DQT_QML_LIB
+    - -DQT_QUICK_LIB
+    - -DUNICODE
+    - -D_UNICODE

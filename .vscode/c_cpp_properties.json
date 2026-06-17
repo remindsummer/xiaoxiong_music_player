@@ -1,0 +1,32 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/build",
+                "${workspaceFolder}/build/xxMusic_autogen/include",
+                "C:/Qt/6.9.3/msvc2022_64/include",
+                "C:/Qt/6.9.3/msvc2022_64/include/QtCore",
+                "C:/Qt/6.9.3/msvc2022_64/include/QtGui",
+                "C:/Qt/6.9.3/msvc2022_64/include/QtQml",
+                "C:/Qt/6.9.3/msvc2022_64/include/QtQuick"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE",
+                "QT_CORE_LIB",
+                "QT_GUI_LIB",
+                "QT_QML_LIB",
+                "QT_QUICK_LIB"
+            ],
+            "windowsSdkVersion": "10.0.26100.0",
+            "compilerPath": "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "windows-msvc-x64"
+        }
+    ],
+    "version": 4
+}

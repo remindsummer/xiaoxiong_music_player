@@ -1,0 +1,89 @@
+# windeployqt 误部署到源码 qml/ 的 Qt 运行时（qml/Main.qml 等源文件仍须提交）
+qml/Qt/
+qml/QtQml/
+qml/QtQuick/
+qml/QML/
+
+# CMake / 构建输出
+build/
+build-*/
+cmake-build-*/
+out/
+
+# 本地 CMake 生成物（若出现在项目根目录）
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps/
+
+# Qt / MOC / RCC 中间文件（若生成在源码目录）
+*_autogen/
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+*.qmlc
+*.jsc
+*.autosave
+
+# MSVC / Windows 编译产物
+*.obj
+*.o
+*.pdb
+*.ilk
+*.exp
+*.idb
+*.ipch
+*.suo
+*.ncb
+*.opendb
+*.tlog
+*.lastbuildstate
+*.recipe
+*.iobj
+*.ipdb
+
+# 可执行文件与部署产物（仅忽略根目录下的，build/ 已整体忽略）
+/*.exe
+/*.dll
+
+# Visual Studio
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+x64/
+x86/
+[Dd]ebug/
+[Rr]elease/
+[Rr]elWithDebInfo/
+[Mm]inSizeRel/
+ipch/
+
+# Qt Creator
+CMakeLists.txt.user*
+*.pro.user*
+*.qbs.user*
+*.autosave
+
+# JetBrains / 其他 IDE
+.idea/
+*.iml
+
+# clangd 索引缓存
+.cache/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# 日志与临时文件
+*.log
+*.tmp
+*.temp
+*~

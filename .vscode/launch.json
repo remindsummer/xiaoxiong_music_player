@@ -1,0 +1,27 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug (CodeLLDB)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/Debug/xxMusic.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}/build/Debug",
+            "preLaunchTask": "CMake: Build",
+            "terminal": "integrated",
+            "stdio": "inherit"
+        },
+        {
+            "name": "Debug (MSVC)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/Debug/xxMusic.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}/build/Debug",
+            "stopAtEntry": false,
+            "preLaunchTask": "CMake: Build",
+            "console": "integratedTerminal"
+        }
+    ]
+}
