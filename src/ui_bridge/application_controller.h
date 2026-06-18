@@ -1,0 +1,64 @@
+#pragma once
+
+#include <QObject>
+
+class PlaybackService;
+class LibraryScanner;
+class LibraryRepository;
+class PlaylistService;
+class LyricService;
+class SearchService;
+class SettingsService;
+class CoverArtService;
+class LibraryCoverPrefetcher;
+class OnlineDownloadService;
+
+class ApplicationController : public QObject
+{
+    Q_OBJECT
+    Q_PROPERTY(QString appName READ appName CONSTANT)
+    Q_PROPERTY(QObject* playback READ playback CONSTANT)
+    Q_PROPERTY(QObject* libraryRepository READ libraryRepository CONSTANT)
+    Q_PROPERTY(QObject* search READ search CONSTANT)
+    Q_PROPERTY(QObject* playlist READ playlist CONSTANT)
+    Q_PROPERTY(QObject* lyrics READ lyrics CONSTANT)
+    Q_PROPERTY(QObject* settings READ settings CONSTANT)
+    Q_PROPERTY(QObject* downloadService READ downloadService CONSTANT)
+    Q_PROPERTY(QObject* playbackService READ playbackService CONSTANT)
+    Q_PROPERTY(QObject* libraryService READ libraryService CONSTANT)
+    Q_PROPERTY(QObject* searchService READ searchService CONSTANT)
+    Q_PROPERTY(QObject* playlistService READ playlistService CONSTANT)
+    Q_PROPERTY(QObject* lyricsService READ lyricsService CONSTANT)
+    Q_PROPERTY(QObject* settingsService READ settingsService CONSTANT)
+
+public:
+    explicit ApplicationController(QObject *parent = nullptr);
+
+    QString appName() const;
+    Q_INVOKABLE QString healthCheck() const;
+    QObject* playback() const;
+    QObject* libraryRepository() const;
+    QObject* search() const;
+    QObject* playlist() const;
+    QObject* lyrics() const;
+    QObject* settings() const;
+    QObject* downloadService() const;
+    QObject* playbackService() const;
+    QObject* libraryService() const;
+    QObject* searchService() const;
+    QObject* playlistService() const;
+    QObject* lyricsService() const;
+    QObject* settingsService() const;
+
+private:
+    PlaybackService *m_playbackService = nullptr;
+    LibraryScanner *m_libraryScanner = nullptr;
+    LibraryRepository *m_libraryRepository = nullptr;
+    PlaylistService *m_playlistService = nullptr;
+    LyricService *m_lyricService = nullptr;
+    SearchService *m_searchService = nullptr;
+    SettingsService *m_settingsService = nullptr;
+    CoverArtService *m_coverArtService = nullptr;
+    LibraryCoverPrefetcher *m_coverPrefetcher = nullptr;
+    OnlineDownloadService *m_downloadService = nullptr;
+};
