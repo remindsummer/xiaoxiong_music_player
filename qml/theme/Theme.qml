@@ -6,6 +6,9 @@ QtObject {
     readonly property color colorBgElevated: "#FFFFFFF2"
     readonly property color colorBgHover: "#EEF2F7"
     readonly property color colorBgPressed: "#E3E9F1"
+    // 与 colorBgHover 同 RGB、alpha 为 0，供 ColorAnimation 起点，避免 transparent(#00000000) 插值发灰
+    readonly property color colorBgHoverClear: Qt.rgba(238 / 255, 242 / 255, 247 / 255, 0)
+    readonly property color colorBgPressedClear: Qt.rgba(227 / 255, 233 / 255, 241 / 255, 0)
 
     readonly property color colorPrimary: "#3B82F6"
     readonly property color colorPrimaryActive: "#2563EB"

@@ -139,7 +139,7 @@ ApplicationWindow {
                                            ? theme.colorPrimary
                                            : (navItem.pressed
                                               ? theme.colorBgPressed
-                                              : (navItem.hovered ? theme.colorBgHover : "transparent"))
+                                              : (navItem.hovered ? theme.colorBgHover : theme.colorBgPanel))
                                     border.color: navItem.selected ? theme.colorPrimaryActive : theme.colorBorderDefault
                                     border.width: navItem.selected ? 0 : 1
 

@@ -123,7 +123,7 @@ Rectangle {
                         radius: theme.radiusSm
                         color: index === root.activeLineIndex
                                ? Qt.rgba(59 / 255, 130 / 255, 246 / 255, 0.12)
-                               : (hovered ? theme.colorBgHover : "transparent")
+                               : (hovered ? theme.colorBgHover : theme.colorBgHoverClear)
                         border.width: index === root.activeLineIndex ? 1 : 0
                         border.color: theme.colorBorderFocus
                         Behavior on color {
