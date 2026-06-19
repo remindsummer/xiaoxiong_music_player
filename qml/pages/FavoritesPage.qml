@@ -172,6 +172,10 @@ Rectangle {
                 spacing: theme.space2
                 model: root.trackItems
 
+                ScrollBar.vertical: ScrollBar {
+                    policy: ScrollBar.AsNeeded
+                }
+
                 delegate: Rectangle {
                     id: favDelegate
                     required property var modelData

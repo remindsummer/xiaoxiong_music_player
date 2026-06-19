@@ -61,12 +61,20 @@ Rectangle {
             color: theme.colorBgPanel
             border.width: 1
             border.color: theme.colorBorderDefault
+            clip: true
 
-            ColumnLayout {
+            ScrollView {
+                id: settingsScrollView
                 anchors.fill: parent
                 anchors.margins: theme.space4
-                spacing: theme.space3
-                enabled: root.settingsReady
+                clip: true
+                ScrollBar.vertical.policy: ScrollBar.AsNeeded
+                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+
+                ColumnLayout {
+                    width: settingsScrollView.availableWidth
+                    spacing: theme.space3
+                    enabled: root.settingsReady
 
                 GridLayout {
                     columns: 3
@@ -356,6 +364,7 @@ Rectangle {
                     }
                 }
             }
+        }
         }
     }
 

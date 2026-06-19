@@ -589,6 +589,10 @@ Rectangle {
                 spacing: theme.space2
                 model: root.libraryTabIndex === 0 ? root.visibleTracks : root.onlineTracks
 
+                ScrollBar.vertical: ScrollBar {
+                    policy: ScrollBar.AsNeeded
+                }
+
                 delegate: Rectangle {
                     id: trackDelegate
                     required property var modelData

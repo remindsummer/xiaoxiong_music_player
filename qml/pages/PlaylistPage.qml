@@ -240,6 +240,10 @@ Rectangle {
                         spacing: theme.space2
                         model: root.playlistItems
 
+                        ScrollBar.vertical: ScrollBar {
+                            policy: ScrollBar.AsNeeded
+                        }
+
                         delegate: Rectangle {
                             id: plDelegate
                             required property var modelData
@@ -426,6 +430,10 @@ Rectangle {
                         clip: true
                         spacing: theme.space2
                         model: root.trackItems
+
+                        ScrollBar.vertical: ScrollBar {
+                            policy: ScrollBar.AsNeeded
+                        }
 
                         delegate: Rectangle {
                             id: plTrackDelegate
