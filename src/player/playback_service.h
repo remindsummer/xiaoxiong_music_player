@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QMediaPlayer>
 #include <QObject>
 #include <QList>
 #include <QString>
@@ -105,6 +106,9 @@ public:
     Q_INVOKABLE void setVolume(int volume);
     Q_INVOKABLE void setPlaybackMode(int mode);
     Q_INVOKABLE QString formatTime(qint64 ms) const;
+    Q_INVOKABLE QVariantList queueTracksForStorage() const;
+    Q_INVOKABLE bool saveSession(const QString &storagePath = QString());
+    Q_INVOKABLE bool restoreSession(const QString &storagePath = QString());
 
 signals:
     void currentTrackChanged();
@@ -157,8 +161,14 @@ private:
     static QueueItem makeItemFromPath(const QString &path);
     static QueueItem makeItemFromVariant(const QVariantMap &map);
     static bool isValidQueueItem(const QueueItem &item);
+    QString defaultSessionPath() const;
+    bool restoreQueueFromTracks(const QVariantList &tracks,
+                                const QString &currentPath,
+                                qint64 positionMs);
+    void applyPendingRestorePosition(QMediaPlayer::MediaStatus status);
 
     QString m_statusText = QStringLiteral("待机");
     QString m_currentCoverPath;
     QString m_coverRequestKey;
+    qint64 m_pendingRestorePositionMs = -1;
 };

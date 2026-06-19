@@ -4,7 +4,13 @@
 #include "../network/meting_api.h"
 
 #include <QAudioOutput>
+#include <QDir>
+#include <QFile>
 #include <QFileInfo>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QStandardPaths>
 #include <QMediaPlayer>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -40,6 +46,7 @@ PlaybackService::PlaybackService(QObject *parent)
         } else {
             updateStatusText();
         }
+        applyPendingRestorePosition(status);
     });
     connect(m_player, &QMediaPlayer::errorOccurred, this, [this](QMediaPlayer::Error, const QString &errorString) {
         setError(errorString);
@@ -648,8 +655,6 @@ void PlaybackService::loadTrack(int index, bool autoplay)
 
     if (autoplay) {
         m_player->play();
-    } else {
-        m_player->stop();
     }
     updateStatusText();
 }
@@ -740,8 +745,6 @@ void PlaybackService::handleResolveReply(int index, bool autoplay)
 
     if (autoplay) {
         m_player->play();
-    } else {
-        m_player->stop();
     }
     updateStatusText();
 }
@@ -863,4 +866,163 @@ void PlaybackService::onCoverReady(const QString &trackKey, const QString &cover
     }
     m_currentCoverPath = coverPath;
     emit currentCoverPathChanged();
+}
+
+QString PlaybackService::defaultSessionPath() const
+{
+    const QString dir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    return dir + QStringLiteral("/playback_session.json");
+}
+
+QVariantList PlaybackService::queueTracksForStorage() const
+{
+    QVariantList list;
+    list.reserve(m_queue.size());
+    for (const QueueItem &item : m_queue) {
+        QVariantMap map{
+            {QStringLiteral("path"), item.path},
+            {QStringLiteral("title"), item.title},
+            {QStringLiteral("artist"), item.artist},
+            {QStringLiteral("isOnline"), item.isOnline},
+        };
+        if (item.isOnline) {
+            map.insert(QStringLiteral("onlineId"), item.onlineId);
+            map.insert(QStringLiteral("server"), item.server);
+            map.insert(QStringLiteral("streamUrl"), item.streamApiUrl);
+            map.insert(QStringLiteral("lrcUrl"), item.lrcApiUrl);
+            map.insert(QStringLiteral("picUrl"), item.picUrl);
+        }
+        list.append(map);
+    }
+    return list;
+}
+
+bool PlaybackService::saveSession(const QString &storagePath)
+{
+    const QString targetPath = storagePath.trimmed().isEmpty() ? defaultSessionPath() : storagePath.trimmed();
+    const QFileInfo info(targetPath);
+    QDir().mkpath(info.absolutePath());
+
+    QJsonObject object;
+    object.insert(QStringLiteral("playbackMode"), playbackMode());
+    object.insert(QStringLiteral("currentPath"), currentPath());
+    object.insert(QStringLiteral("positionMs"), position());
+
+    QJsonArray queueArray;
+    const QVariantList tracks = queueTracksForStorage();
+    for (const QVariant &value : tracks) {
+        queueArray.append(QJsonObject::fromVariantMap(value.toMap()));
+    }
+    object.insert(QStringLiteral("queue"), queueArray);
+
+    QFile file(targetPath);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        return false;
+    }
+    file.write(QJsonDocument(object).toJson(QJsonDocument::Indented));
+    file.close();
+    return true;
+}
+
+bool PlaybackService::restoreQueueFromTracks(const QVariantList &tracks,
+                                             const QString &currentPath,
+                                             qint64 positionMs)
+{
+    QList<QueueItem> nextQueue;
+    nextQueue.reserve(tracks.size());
+    for (const QVariant &value : tracks) {
+        const QVariantMap map = value.toMap();
+        QueueItem item = makeItemFromVariant(map);
+        if (!isValidQueueItem(item)) {
+            continue;
+        }
+        if (!item.isOnline && !QFileInfo::exists(item.path)) {
+            continue;
+        }
+        nextQueue.append(item);
+    }
+
+    if (nextQueue.isEmpty()) {
+        return false;
+    }
+
+    int targetIndex = 0;
+    if (!currentPath.trimmed().isEmpty()) {
+        for (int i = 0; i < nextQueue.size(); ++i) {
+            if (nextQueue.at(i).path == currentPath) {
+                targetIndex = i;
+                break;
+            }
+        }
+    }
+
+    m_queue = nextQueue;
+    clearError();
+    emit queueChanged();
+
+    m_pendingRestorePositionMs = qMax<qint64>(0, positionMs);
+    loadTrack(targetIndex, false);
+    return true;
+}
+
+bool PlaybackService::restoreSession(const QString &storagePath)
+{
+    const QString targetPath = storagePath.trimmed().isEmpty() ? defaultSessionPath() : storagePath.trimmed();
+    QFile file(targetPath);
+    if (!file.exists()) {
+        return true;
+    }
+    if (!file.open(QIODevice::ReadOnly)) {
+        return false;
+    }
+
+    const QByteArray data = file.readAll();
+    file.close();
+
+    QJsonParseError parseError;
+    const QJsonDocument doc = QJsonDocument::fromJson(data, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
+        return false;
+    }
+
+    const QJsonObject object = doc.object();
+    setPlaybackMode(object.value(QStringLiteral("playbackMode")).toInt(static_cast<int>(PlaybackMode::Sequential)));
+
+    const QJsonArray queueArray = object.value(QStringLiteral("queue")).toArray();
+    QVariantList tracks;
+    tracks.reserve(queueArray.size());
+    for (const QJsonValue &value : queueArray) {
+        if (value.isObject()) {
+            tracks.append(value.toObject().toVariantMap());
+        }
+    }
+
+    if (tracks.isEmpty()) {
+        return true;
+    }
+
+    const QString savedPath = object.value(QStringLiteral("currentPath")).toString();
+    const qint64 positionMs = object.value(QStringLiteral("positionMs")).toInteger(0);
+    return restoreQueueFromTracks(tracks, savedPath, positionMs);
+}
+
+void PlaybackService::applyPendingRestorePosition(QMediaPlayer::MediaStatus status)
+{
+    if (m_pendingRestorePositionMs < 0) {
+        return;
+    }
+    if (status != QMediaPlayer::LoadedMedia && status != QMediaPlayer::BufferedMedia) {
+        return;
+    }
+
+    const qint64 durationMs = m_player->duration();
+    qint64 targetPosition = m_pendingRestorePositionMs;
+    m_pendingRestorePositionMs = -1;
+
+    if (durationMs > 0 && targetPosition > durationMs) {
+        targetPosition = durationMs;
+    }
+
+    m_player->setPosition(targetPosition);
+    emit positionChanged();
 }

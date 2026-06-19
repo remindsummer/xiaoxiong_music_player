@@ -33,6 +33,7 @@ class ApplicationController : public QObject
 
 public:
     explicit ApplicationController(QObject *parent = nullptr);
+    ~ApplicationController() override;
 
     QString appName() const;
     Q_INVOKABLE QString healthCheck() const;

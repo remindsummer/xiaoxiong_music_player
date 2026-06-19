@@ -7,6 +7,7 @@
 #include <QDebug>
 
 #include "ui_bridge/application_controller.h"
+#include "player/playback_service.h"
 
 int main(int argc, char *argv[])
 {
@@ -38,6 +39,12 @@ int main(int argc, char *argv[])
 
     if (engine.rootObjects().isEmpty())
         return -1;
+
+    QObject::connect(&app, &QGuiApplication::aboutToQuit, &controller, [&controller]() {
+        if (PlaybackService *playback = qobject_cast<PlaybackService *>(controller.playbackService())) {
+            playback->saveSession();
+        }
+    });
 
     qDebug() << "Application started";
     return app.exec();

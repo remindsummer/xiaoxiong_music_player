@@ -140,38 +140,21 @@ Rectangle {
         spacing: theme.space3
 
         // ----- 左：封面（跨进度条 + 控制行两行）-----
-        Rectangle {
+        RoundedCover {
             id: coverBlock
             Layout.preferredWidth: 56
             Layout.fillHeight: true
             Layout.maximumHeight: 64
-            radius: theme.radiusSm
-            color: theme.colorPrimary
-            clip: true
+            cornerRadius: theme.radiusMd
+            placeholderColor: theme.colorPrimary
             opacity: root.hasCurrentTrack ? 1 : 0.75
-
-            Image {
-                id: coverImage
-                anchors.fill: parent
-                source: {
-                    if (root.playback && root.playback.currentCoverPath !== "") {
-                        return root.playback.currentCoverPath
-                    }
-                    return "../../assets/icons/music_note.svg"
+            imageSource: {
+                if (root.playback && root.playback.currentCoverPath !== "") {
+                    return root.playback.currentCoverPath
                 }
-                fillMode: root.playback && root.playback.currentCoverPath !== ""
-                          ? Image.PreserveAspectCrop
-                          : Image.Pad
-                sourceSize.width: 56
-                sourceSize.height: 56
-                opacity: root.playback && root.playback.currentCoverPath !== "" ? 1 : 0.92
-
-                onStatusChanged: {
-                    if (status === Image.Error && root.playback && root.playback.currentCoverPath !== "") {
-                        source = "../../assets/icons/music_note.svg"
-                    }
-                }
+                return "../../assets/icons/music_note.svg"
             }
+            fallbackSource: "../../assets/icons/music_note.svg"
 
             MouseArea {
                 anchors.fill: parent
@@ -202,7 +185,7 @@ Rectangle {
                     horizontalAlignment: Text.AlignRight
                 }
 
-                Slider {
+                ThemedSlider {
                     id: progressSlider
                     Layout.fillWidth: true
                     from: 0
@@ -381,7 +364,7 @@ Rectangle {
                         }
                     }
 
-                    Slider {
+                    ThemedSlider {
                         from: 0
                         to: 100
                         value: root.volumeValue

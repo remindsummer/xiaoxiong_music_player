@@ -30,6 +30,15 @@ ApplicationController::ApplicationController(QObject *parent)
     m_downloadService->setSettingsService(m_settingsService);
     m_downloadService->setLibraryRepository(m_libraryRepository);
     m_downloadService->setCoverArtService(m_coverArtService);
+
+    m_playbackService->restoreSession();
+}
+
+ApplicationController::~ApplicationController()
+{
+    if (m_playbackService) {
+        m_playbackService->saveSession();
+    }
 }
 
 QString ApplicationController::appName() const

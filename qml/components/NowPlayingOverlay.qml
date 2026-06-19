@@ -182,34 +182,19 @@ Rectangle {
             Layout.fillHeight: true
             spacing: theme.space4
 
-            Rectangle {
+            RoundedCover {
                 Layout.preferredWidth: 300
-                Layout.fillHeight: true
-                radius: theme.radiusMd
-                color: theme.colorPrimary
-                clip: true
-
-                Image {
-                    anchors.fill: parent
-                    anchors.margins: theme.space2
-                    source: {
-                        if (root.playback && root.playback.currentCoverPath !== "") {
-                            return root.playback.currentCoverPath
-                        }
-                        return "../../assets/icons/music_note.svg"
+                Layout.preferredHeight: 300
+                Layout.maximumHeight: 300
+                cornerRadius: theme.radiusMd
+                placeholderColor: theme.colorPrimary
+                imageSource: {
+                    if (root.playback && root.playback.currentCoverPath !== "") {
+                        return root.playback.currentCoverPath
                     }
-                    fillMode: root.playback && root.playback.currentCoverPath !== ""
-                              ? Image.PreserveAspectCrop
-                              : Image.Pad
-                    sourceSize.width: 300
-                    sourceSize.height: 300
-
-                    onStatusChanged: {
-                        if (status === Image.Error && root.playback && root.playback.currentCoverPath !== "") {
-                            source = "../../assets/icons/music_note.svg"
-                        }
-                    }
+                    return "../../assets/icons/music_note.svg"
                 }
+                fallbackSource: "../../assets/icons/music_note.svg"
             }
 
             Components.LyricsPanel {

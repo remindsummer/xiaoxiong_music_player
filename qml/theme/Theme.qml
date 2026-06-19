@@ -49,4 +49,7 @@ QtObject {
     readonly property int motionFast: 120
     readonly property int motionNormal: 180
     readonly property int motionSlow: 220
+
+    readonly property int sliderHandleSize: 12
+    readonly property int sliderGrooveHeight: 4
 }
