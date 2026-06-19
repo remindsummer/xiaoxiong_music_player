@@ -97,10 +97,57 @@ QString metingApiBasesTextFromJsonValue(const QJsonValue &value)
     return defaultMetingApiBasesValue();
 }
 
+int defaultSpectrumFps()
+{
+    return 30;
+}
+
+int clampSpectrumFps(int fps)
+{
+    return qBound(15, fps, 60);
+}
+
+QString defaultSpectrumStyle()
+{
+    return QStringLiteral("smoothMirror");
+}
+
+QStringList validSpectrumStyles()
+{
+    return {
+        QStringLiteral("smoothMirror"),
+        QStringLiteral("mirrorBars"),
+        QStringLiteral("lineTrace"),
+        QStringLiteral("upperGlow"),
+        QStringLiteral("particleDots"),
+    };
+}
+
+QString normalizeSpectrumStyle(const QString &style)
+{
+    const QString trimmed = style.trimmed();
+    if (validSpectrumStyles().contains(trimmed)) {
+        return trimmed;
+    }
+    return defaultSpectrumStyle();
+}
+
+qreal defaultSpectrumOpacity()
+{
+    return 0.58;
+}
+
+qreal clampSpectrumOpacity(qreal opacity)
+{
+    return qBound(0.15, opacity, 1.0);
+}
+
 } // namespace
 
 SettingsService::SettingsService(QObject *parent)
     : QObject(parent)
+    , m_spectrumStyle(defaultSpectrumStyle())
+    , m_spectrumOpacity(defaultSpectrumOpacity())
 {
     load();
 }
@@ -126,10 +173,14 @@ QString SettingsService::language() const
 
 void SettingsService::setLanguage(const QString &language)
 {
-    if (m_language == language) {
+    QString normalized = language.trimmed();
+    if (normalized != QStringLiteral("en_US") && normalized != QStringLiteral("zh_CN")) {
+        normalized = defaultLanguage();
+    }
+    if (m_language == normalized) {
         return;
     }
-    m_language = language;
+    m_language = normalized;
     emit languageChanged();
 }
 
@@ -175,6 +226,65 @@ void SettingsService::setLyricOnlineEnabled(bool enabled)
     emit lyricOnlineEnabledChanged();
 }
 
+bool SettingsService::spectrumEnabled() const
+{
+    return m_spectrumEnabled;
+}
+
+void SettingsService::setSpectrumEnabled(bool enabled)
+{
+    if (m_spectrumEnabled == enabled) {
+        return;
+    }
+    m_spectrumEnabled = enabled;
+    emit spectrumEnabledChanged();
+}
+
+int SettingsService::spectrumFps() const
+{
+    return m_spectrumFps;
+}
+
+void SettingsService::setSpectrumFps(int fps)
+{
+    const int clamped = clampSpectrumFps(fps);
+    if (m_spectrumFps == clamped) {
+        return;
+    }
+    m_spectrumFps = clamped;
+    emit spectrumFpsChanged();
+}
+
+QString SettingsService::spectrumStyle() const
+{
+    return m_spectrumStyle;
+}
+
+void SettingsService::setSpectrumStyle(const QString &style)
+{
+    const QString normalized = normalizeSpectrumStyle(style);
+    if (m_spectrumStyle == normalized) {
+        return;
+    }
+    m_spectrumStyle = normalized;
+    emit spectrumStyleChanged();
+}
+
+qreal SettingsService::spectrumOpacity() const
+{
+    return m_spectrumOpacity;
+}
+
+void SettingsService::setSpectrumOpacity(qreal opacity)
+{
+    const qreal clamped = clampSpectrumOpacity(opacity);
+    if (qFuzzyCompare(m_spectrumOpacity, clamped)) {
+        return;
+    }
+    m_spectrumOpacity = clamped;
+    emit spectrumOpacityChanged();
+}
+
 QString SettingsService::metingApiBases() const
 {
     return m_metingApiBases;
@@ -213,6 +323,10 @@ void SettingsService::applyDefaults()
     setDefaultScanDirectory(defaultScanDirectoryValue());
     setDefaultDownloadDirectory(defaultDownloadDirectoryValue());
     setLyricOnlineEnabled(true);
+    setSpectrumEnabled(true);
+    setSpectrumFps(defaultSpectrumFps());
+    setSpectrumStyle(defaultSpectrumStyle());
+    setSpectrumOpacity(defaultSpectrumOpacity());
     setMetingApiBases(defaultMetingApiBasesValue());
 }
 
@@ -229,6 +343,12 @@ bool SettingsService::loadFromJsonObject(const QJsonObject &object)
     setDefaultDownloadDirectory(
         object.value(QStringLiteral("defaultDownloadDirectory")).toString(defaultDownloadDirectoryValue()));
     setLyricOnlineEnabled(object.value(QStringLiteral("lyricOnlineEnabled")).toBool(true));
+    setSpectrumEnabled(object.value(QStringLiteral("spectrumEnabled")).toBool(true));
+    setSpectrumFps(clampSpectrumFps(object.value(QStringLiteral("spectrumFps")).toInt(defaultSpectrumFps())));
+    setSpectrumStyle(normalizeSpectrumStyle(
+        object.value(QStringLiteral("spectrumStyle")).toString(defaultSpectrumStyle())));
+    setSpectrumOpacity(clampSpectrumOpacity(
+        object.value(QStringLiteral("spectrumOpacity")).toDouble(defaultSpectrumOpacity())));
     setMetingApiBases(metingApiBasesTextFromJsonValue(object.value(QStringLiteral("metingApiBases"))));
     return true;
 }
@@ -246,6 +366,10 @@ QJsonObject SettingsService::toJsonObject() const
     object.insert(QStringLiteral("defaultScanDirectory"), m_defaultScanDirectory);
     object.insert(QStringLiteral("defaultDownloadDirectory"), m_defaultDownloadDirectory);
     object.insert(QStringLiteral("lyricOnlineEnabled"), m_lyricOnlineEnabled);
+    object.insert(QStringLiteral("spectrumEnabled"), m_spectrumEnabled);
+    object.insert(QStringLiteral("spectrumFps"), m_spectrumFps);
+    object.insert(QStringLiteral("spectrumStyle"), m_spectrumStyle);
+    object.insert(QStringLiteral("spectrumOpacity"), m_spectrumOpacity);
     object.insert(QStringLiteral("metingApiBases"), metingArray);
     return object;
 }

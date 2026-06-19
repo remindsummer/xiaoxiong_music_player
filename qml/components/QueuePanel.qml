@@ -47,7 +47,7 @@ Rectangle {
 
             Label {
                 Layout.fillWidth: true
-                text: "播放队列（" + root.queueItems.length + "）"
+                text: qsTr("播放队列（%1）").arg(root.queueItems.length)
                 font.bold: true
                 font.family: theme.fontFamily
                 font.pixelSize: theme.fontH2
@@ -55,7 +55,7 @@ Rectangle {
             }
 
             Button {
-                text: "清空"
+                text: qsTr("清空")
                 enabled: !!root.playback && root.queueItems.length > 0
                 hoverEnabled: true
                 font.family: theme.fontFamily
@@ -90,7 +90,7 @@ Rectangle {
             Label {
                 anchors.centerIn: parent
                 visible: root.queueItems.length === 0
-                text: "队列为空\n在曲库或歌单中双击歌曲开始播放"
+                text: qsTr("队列为空\n在曲库或歌单中双击歌曲开始播放")
                 horizontalAlignment: Text.AlignHCenter
                 color: theme.colorTextMuted
                 font.family: theme.fontFamily
@@ -155,7 +155,7 @@ Rectangle {
 
                             Label {
                                 Layout.fillWidth: true
-                                text: (queueDelegate.modelData.title || "未知标题")
+                                text: (queueDelegate.modelData.title || qsTr("未知标题"))
                                 color: queueDelegate.isCurrent ? theme.colorPrimaryActive : theme.colorTextPrimary
                                 font.family: theme.fontFamily
                                 font.pixelSize: theme.fontBody
@@ -183,7 +183,7 @@ Rectangle {
                             icon.height: 16
                             display: AbstractButton.IconOnly
                             ToolTip.visible: hovered
-                            ToolTip.text: "从队列移除"
+                            ToolTip.text: qsTr("从队列移除")
                             onClicked: {
                                 if (root.playback) {
                                     root.playback.removeFromQueue(queueDelegate.index)

@@ -184,7 +184,7 @@ Rectangle {
 
     FolderDialog {
         id: scanFolderDialog
-        title: "选择要扫描的目录"
+        title: qsTr("选择要扫描的目录")
         onAccepted: {
             const selectedPath = root.normalizeLocalPath(selectedFolder.toString())
             directoryField.text = selectedPath
@@ -198,9 +198,9 @@ Rectangle {
 
     FileDialog {
         id: openSingleTrackDialog
-        title: "选择音频文件"
+        title: qsTr("选择音频文件")
         fileMode: FileDialog.OpenFile
-        nameFilters: ["音频文件 (*.mp3 *.wav *.flac *.aac *.m4a *.ogg)", "所有文件 (*)"]
+        nameFilters: [qsTr("音频文件 (*.mp3 *.wav *.flac *.aac *.m4a *.ogg)"), qsTr("所有文件 (*)")]
         onAccepted: {
             if (!playback || selectedFile.toString() === "") {
                 return
@@ -221,7 +221,7 @@ Rectangle {
         id: addToPlaylistMenu
 
         MenuItem {
-            text: root.playlistChoices.length === 0 ? "暂无歌单（请到播放列表页新建）" : "添加到歌单："
+            text: root.playlistChoices.length === 0 ? qsTr("暂无歌单（请到播放列表页新建）") : qsTr("添加到歌单：")
             enabled: false
         }
 
@@ -248,7 +248,7 @@ Rectangle {
         spacing: theme.space3
 
         Label {
-            text: "曲库"
+            text: qsTr("曲库")
             font.bold: true
             font.family: theme.fontFamily
             font.pixelSize: theme.fontH1
@@ -256,7 +256,7 @@ Rectangle {
         }
 
         Label {
-            text: "控制器: " + root.appController.appName
+            text: qsTr("控制器: %1").arg(root.appController.appName)
             color: theme.colorTextMuted
             font.family: theme.fontFamily
             font.pixelSize: theme.fontCaption
@@ -267,7 +267,7 @@ Rectangle {
             spacing: theme.space2
 
             Button {
-                text: "本地曲库"
+                text: qsTr("本地曲库")
                 hoverEnabled: true
                 font.family: theme.fontFamily
                 font.pixelSize: theme.fontBody
@@ -292,7 +292,7 @@ Rectangle {
             }
 
             Button {
-                text: "在线搜歌"
+                text: qsTr("在线搜歌")
                 hoverEnabled: true
                 font.family: theme.fontFamily
                 font.pixelSize: theme.fontBody
@@ -345,7 +345,7 @@ Rectangle {
                     anchors.fill: parent
                     anchors.leftMargin: theme.space3
                     anchors.rightMargin: theme.space3
-                    placeholderText: "输入要扫描的目录，例如 D:/Music"
+                    placeholderText: qsTr("输入要扫描的目录，例如 D:/Music")
                     font.family: theme.fontFamily
                     font.pixelSize: theme.fontBody
                     color: enabled ? theme.colorTextPrimary : theme.colorTextMuted
@@ -359,7 +359,7 @@ Rectangle {
             }
 
             Button {
-                text: "选择目录"
+                text: qsTr("选择目录")
                 enabled: !!libraryRepository
                 hoverEnabled: true
                 font.family: theme.fontFamily
@@ -376,7 +376,7 @@ Rectangle {
             }
 
             Button {
-                text: "扫描"
+                text: qsTr("扫描")
                 enabled: !!libraryRepository
                 hoverEnabled: true
                 font.family: theme.fontFamily
@@ -419,7 +419,7 @@ Rectangle {
             }
 
             Button {
-                text: "打开单曲"
+                text: qsTr("打开单曲")
                 enabled: !!playback
                 hoverEnabled: true
                 font.family: theme.fontFamily
@@ -440,7 +440,7 @@ Rectangle {
             id: searchBar
             Layout.fillWidth: true
             visible: root.libraryTabIndex === 0
-            placeholderText: "搜索歌名 / 歌手 / 专辑"
+            placeholderText: qsTr("搜索歌名 / 歌手 / 专辑")
             onTextEdited: searchDebounceTimer.restart()
             onSearchCommitted: root.refreshVisibleTracks()
             onCleared: root.refreshVisibleTracks()
@@ -454,7 +454,7 @@ Rectangle {
             Item { Layout.fillWidth: true }
 
             Button {
-                text: "播放全部"
+                text: qsTr("播放全部")
                 enabled: !!playback && root.visibleTracks.length > 0
                 hoverEnabled: true
                 font.family: theme.fontFamily
@@ -489,12 +489,12 @@ Rectangle {
             Components.SearchBar {
                 id: onlineSearchBar
                 Layout.fillWidth: true
-                placeholderText: "搜索在线歌曲（网易云）"
+                placeholderText: qsTr("搜索在线歌曲（网易云）")
                 onSearchCommitted: root.triggerOnlineSearch()
             }
 
             Button {
-                text: searchService && searchService.onlineSearchState === "searching" ? "搜索中..." : "搜索"
+                text: searchService && searchService.onlineSearchState === "searching" ? qsTr("搜索中...") : qsTr("搜索")
                 enabled: !!searchService && (!searchService || searchService.onlineSearchState !== "searching")
                 hoverEnabled: true
                 font.family: theme.fontFamily
@@ -521,7 +521,7 @@ Rectangle {
             }
 
             Button {
-                text: "播放全部"
+                text: qsTr("播放全部")
                 enabled: !!playback && root.onlineTracks.length > 0
                 hoverEnabled: true
                 font.family: theme.fontFamily
@@ -550,7 +550,9 @@ Rectangle {
 
         Label {
             visible: root.libraryTabIndex === 0
-            text: "共 " + (libraryRepository ? libraryRepository.trackCount() : 0) + " 首，当前显示 " + root.visibleTracks.length + " 首（双击播放，单击选中）"
+            text: qsTr("共 %1 首，当前显示 %2 首（双击播放，单击选中）")
+                    .arg(libraryRepository ? libraryRepository.trackCount() : 0)
+                    .arg(root.visibleTracks.length)
             color: theme.colorTextSecondary
             font.family: theme.fontFamily
             font.pixelSize: theme.fontCaption
@@ -560,12 +562,12 @@ Rectangle {
             visible: root.libraryTabIndex === 1
             text: {
                 if (searchService && searchService.onlineSearchState === "searching") {
-                    return "正在搜索在线歌曲..."
+                    return qsTr("正在搜索在线歌曲...")
                 }
                 if (searchService && searchService.onlineLastError !== "") {
                     return searchService.onlineLastError
                 }
-                return "找到 " + root.onlineTracks.length + " 首在线歌曲（双击插入下一首播放，需联网）"
+                return qsTr("找到 %1 首在线歌曲（双击插入下一首播放，需联网）").arg(root.onlineTracks.length)
             }
             color: (searchService && searchService.onlineLastError !== "") ? theme.colorStateError : theme.colorTextSecondary
             font.family: theme.fontFamily
@@ -574,12 +576,11 @@ Rectangle {
             Layout.fillWidth: true
         }
 
-        Rectangle {
+        Components.GlassPanel {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            radius: theme.radiusMd
-            color: theme.colorBgPanel
-            border.color: theme.colorBorderDefault
+            cornerRadius: theme.radiusMd
+            padding: theme.space2
 
             ListView {
                 id: trackList
@@ -606,7 +607,7 @@ Rectangle {
                     implicitHeight: 74
                     radius: theme.radiusSm
                     color: trackDelegate.isPlaying
-                           ? Qt.rgba(59 / 255, 130 / 255, 246 / 255, 0.15)
+                           ? theme.colorPrimaryTint
                            : (trackDelegate.isSelected
                               ? theme.colorBgPressed
                               : (trackDelegate.hovered ? theme.colorBgHover : "transparent"))
@@ -656,7 +657,7 @@ Rectangle {
 
                                 Label {
                                     Layout.fillWidth: true
-                                    text: (trackDelegate.modelData.title || "未知标题") + " - " + (trackDelegate.modelData.artist || "未知歌手")
+                                    text: (trackDelegate.modelData.title || qsTr("未知标题")) + " - " + (trackDelegate.modelData.artist || qsTr("未知歌手"))
                                     font.bold: true
                                     font.family: theme.fontFamily
                                     font.pixelSize: theme.fontBody
@@ -666,7 +667,7 @@ Rectangle {
 
                                 Label {
                                     visible: trackDelegate.isOnlineItem
-                                    text: "在线"
+                                    text: qsTr("在线")
                                     color: theme.colorPrimary
                                     font.family: theme.fontFamily
                                     font.pixelSize: theme.fontCaption
@@ -677,7 +678,7 @@ Rectangle {
                             Label {
                                 Layout.fillWidth: true
                                 visible: !trackDelegate.isOnlineItem
-                                text: "专辑：" + (trackDelegate.modelData.album || "未知专辑")
+                                text: qsTr("专辑：%1").arg(trackDelegate.modelData.album || qsTr("未知专辑"))
                                 color: theme.colorTextSecondary
                                 font.family: theme.fontFamily
                                 font.pixelSize: theme.fontCaption
@@ -687,8 +688,10 @@ Rectangle {
                             Label {
                                 Layout.fillWidth: true
                                 text: trackDelegate.isOnlineItem
-                                      ? "来源：网易云音乐 · 双击插入下一首播放"
-                                      : ("时长：" + root.formatDuration(trackDelegate.modelData.durationMs) + "  路径：" + (trackDelegate.modelData.path || ""))
+                                      ? qsTr("来源：网易云音乐 · 双击插入下一首播放")
+                                      : qsTr("时长：%1  路径：%2")
+                                            .arg(root.formatDuration(trackDelegate.modelData.durationMs))
+                                            .arg(trackDelegate.modelData.path || "")
                                 color: theme.colorTextMuted
                                 font.family: theme.fontFamily
                                 font.pixelSize: theme.fontCaption
@@ -705,7 +708,7 @@ Rectangle {
                             icon.height: 20
                             display: AbstractButton.IconOnly
                             ToolTip.visible: hovered
-                            ToolTip.text: "播放"
+                            ToolTip.text: qsTr("播放")
                             onClicked: {
                                 if (trackDelegate.isOnlineItem) {
                                     root.playOnlineTrackAt(trackDelegate.index)
@@ -732,8 +735,8 @@ Rectangle {
                             display: AbstractButton.IconOnly
                             ToolTip.visible: hovered
                             ToolTip.text: root.downloadService && root.downloadService.downloadState === "downloading"
-                                          ? "下载中..."
-                                          : "下载到本地并加入曲库"
+                                          ? qsTr("下载中...")
+                                          : qsTr("下载到本地并加入曲库")
                             onClicked: root.downloadOnlineTrack(trackDelegate.modelData)
                             background: Rectangle {
                                 radius: width / 2
@@ -750,7 +753,7 @@ Rectangle {
                             icon.height: 20
                             display: AbstractButton.IconOnly
                             ToolTip.visible: hovered
-                            ToolTip.text: "添加到歌单"
+                            ToolTip.text: qsTr("添加到歌单")
                             onClicked: root.openAddToPlaylistMenu(trackDelegate.modelData, this)
                             background: Rectangle {
                                 radius: width / 2

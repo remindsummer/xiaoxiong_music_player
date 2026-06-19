@@ -12,11 +12,14 @@ class SettingsService;
 class CoverArtService;
 class LibraryCoverPrefetcher;
 class OnlineDownloadService;
+class AudioVisualizerService;
+class UiTranslationService;
 
 class ApplicationController : public QObject
 {
     Q_OBJECT
-    Q_PROPERTY(QString appName READ appName CONSTANT)
+    Q_PROPERTY(QString appName READ appName NOTIFY uiLanguageRevisionChanged)
+    Q_PROPERTY(int uiLanguageRevision READ uiLanguageRevision NOTIFY uiLanguageRevisionChanged)
     Q_PROPERTY(QObject* playback READ playback CONSTANT)
     Q_PROPERTY(QObject* libraryRepository READ libraryRepository CONSTANT)
     Q_PROPERTY(QObject* search READ search CONSTANT)
@@ -30,6 +33,7 @@ class ApplicationController : public QObject
     Q_PROPERTY(QObject* playlistService READ playlistService CONSTANT)
     Q_PROPERTY(QObject* lyricsService READ lyricsService CONSTANT)
     Q_PROPERTY(QObject* settingsService READ settingsService CONSTANT)
+    Q_PROPERTY(QObject* audioVisualizer READ audioVisualizer CONSTANT)
 
 public:
     explicit ApplicationController(QObject *parent = nullptr);
@@ -50,8 +54,18 @@ public:
     QObject* playlistService() const;
     QObject* lyricsService() const;
     QObject* settingsService() const;
+    QObject* audioVisualizer() const;
+
+    int uiLanguageRevision() const;
+    void setUiTranslationService(UiTranslationService *translationService);
+
+    Q_INVOKABLE bool applyUiLanguage();
+
+signals:
+    void uiLanguageRevisionChanged();
 
 private:
+    void bumpUiLanguageRevision();
     PlaybackService *m_playbackService = nullptr;
     LibraryScanner *m_libraryScanner = nullptr;
     LibraryRepository *m_libraryRepository = nullptr;
@@ -62,4 +76,7 @@ private:
     CoverArtService *m_coverArtService = nullptr;
     LibraryCoverPrefetcher *m_coverPrefetcher = nullptr;
     OnlineDownloadService *m_downloadService = nullptr;
+    AudioVisualizerService *m_audioVisualizerService = nullptr;
+    UiTranslationService *m_translationService = nullptr;
+    int m_uiLanguageRevision = 0;
 };

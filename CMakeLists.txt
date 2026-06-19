@@ -21,7 +21,7 @@ if(NOT CMAKE_PREFIX_PATH)
 endif()
 message(STATUS "使用的 Qt 路径 (CMAKE_PREFIX_PATH): ${CMAKE_PREFIX_PATH}")
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick QuickControls2 Multimedia Network)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick QuickControls2 Multimedia Network LinguistTools)
 
 # 启用 Qt 标准 CMake 行为（AUTOMOC、QML 模块等）
 qt_standard_project_setup()
@@ -41,6 +41,10 @@ qt_add_executable(xxMusic
     # ===== 播放核心模块 =====
     src/player/playback_service.cpp
     src/player/playback_service.h
+    src/player/audio_spectrum_analyzer.cpp
+    src/player/audio_spectrum_analyzer.h
+    src/player/audio_visualizer_service.cpp
+    src/player/audio_visualizer_service.h
 
     # ===== 曲库模块 =====
     src/library/library_scanner.cpp
@@ -84,6 +88,10 @@ qt_add_executable(xxMusic
     src/settings/settings_service.cpp
     src/settings/settings_service.h
 
+    # ===== 国际化 =====
+    src/i18n/ui_translation_service.cpp
+    src/i18n/ui_translation_service.h
+
     # ===== 数据模型占位 =====
     src/models/track_model.h
     src/models/lyric_line.h
@@ -115,8 +123,20 @@ qt_add_qml_module(xxMusic
         qml/components/MarqueeLabel.qml
         qml/components/RoundedCover.qml
         qml/components/ThemedSlider.qml
+        qml/components/GlassPanel.qml
+        qml/components/PrimaryButton.qml
+        qml/components/GhostButton.qml
+        qml/components/DangerButton.qml
+        qml/components/ThemedTextField.qml
+        qml/components/ThemedComboBox.qml
+        qml/components/TrackListDelegate.qml
+        qml/components/HiResBadge.qml
+        qml/components/TrackMetadataCard.qml
+        qml/components/SpectrumVisualizer.qml
+        qml/components/ImmersiveLyricsPanel.qml
         qml/components/SearchBar.qml
         qml/components/LyricsPanel.qml
+        qml/components/LyricsContextMenu.qml
         qml/components/QueuePanel.qml
         qml/components/NowPlayingOverlay.qml
 
@@ -143,6 +163,21 @@ qt_add_qml_module(xxMusic
         assets/icons/music_note.svg
         assets/icons/download.svg
         assets/icons/back.svg
+)
+
+qt_add_translations(xxMusic
+    TS_FILES
+        i18n/xiaoxiong_zh_CN.ts
+        i18n/xiaoxiong_en_US.ts
+    RESOURCE_PREFIX
+        /i18n
+)
+
+qt_add_resources(xxMusic "app_translations"
+    PREFIX "/i18n"
+    FILES
+        i18n/xiaoxiong_zh_CN.qm
+        i18n/xiaoxiong_en_US.qm
 )
 
 target_link_libraries(xxMusic PRIVATE
@@ -213,5 +248,20 @@ if(BUILD_TESTING)
         COMMAND ${CMAKE_COMMAND} -E env
             "PATH=${CMAKE_PREFIX_PATH}/bin$<SEMICOLON>$<TARGET_FILE_DIR:xxMusic>/bin$<SEMICOLON>$<TARGET_FILE_DIR:test_playlist_service>$<SEMICOLON>$ENV{PATH}"
             $<TARGET_FILE:test_playlist_service>
+    )
+
+    qt_add_executable(test_audio_spectrum_analyzer
+        tests/unit/test_audio_spectrum_analyzer.cpp
+        src/player/audio_spectrum_analyzer.cpp
+    )
+    target_link_libraries(test_audio_spectrum_analyzer PRIVATE
+        Qt6::Core
+        Qt6::Test
+    )
+    add_test(
+        NAME test_audio_spectrum_analyzer
+        COMMAND ${CMAKE_COMMAND} -E env
+            "PATH=${CMAKE_PREFIX_PATH}/bin$<SEMICOLON>$<TARGET_FILE_DIR:xxMusic>/bin$<SEMICOLON>$<TARGET_FILE_DIR:test_audio_spectrum_analyzer>$<SEMICOLON>$ENV{PATH}"
+            $<TARGET_FILE:test_audio_spectrum_analyzer>
     )
 endif()

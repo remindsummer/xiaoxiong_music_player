@@ -6,9 +6,11 @@
 #include "../library/library_repository.h"
 #include "../library/library_scanner.h"
 #include "../lyrics/lyric_service.h"
+#include "../player/audio_visualizer_service.h"
 #include "../player/playback_service.h"
 #include "../playlist/playlist_service.h"
 #include "../search/search_service.h"
+#include "../i18n/ui_translation_service.h"
 #include "../settings/settings_service.h"
 
 ApplicationController::ApplicationController(QObject *parent)
@@ -23,13 +25,25 @@ ApplicationController::ApplicationController(QObject *parent)
     , m_coverArtService(new CoverArtService(this))
     , m_coverPrefetcher(new LibraryCoverPrefetcher(this))
     , m_downloadService(new OnlineDownloadService(this))
+    , m_audioVisualizerService(new AudioVisualizerService(this))
 {
     m_playbackService->setCoverArtService(m_coverArtService);
+    m_playbackService->setCoverPrefetcher(m_coverPrefetcher);
+    m_playbackService->setAudioVisualizer(m_audioVisualizerService);
     m_coverPrefetcher->setCoverArtService(m_coverArtService);
     m_libraryRepository->setCoverPrefetcher(m_coverPrefetcher);
     m_downloadService->setSettingsService(m_settingsService);
     m_downloadService->setLibraryRepository(m_libraryRepository);
     m_downloadService->setCoverArtService(m_coverArtService);
+
+    m_audioVisualizerService->setRefreshFps(m_settingsService->spectrumFps());
+    m_audioVisualizerService->setProcessingEnabled(m_settingsService->spectrumEnabled());
+    connect(m_settingsService, &SettingsService::spectrumFpsChanged, this, [this]() {
+        m_audioVisualizerService->setRefreshFps(m_settingsService->spectrumFps());
+    });
+    connect(m_settingsService, &SettingsService::spectrumEnabledChanged, this, [this]() {
+        m_audioVisualizerService->setProcessingEnabled(m_settingsService->spectrumEnabled());
+    });
 
     m_playbackService->restoreSession();
 }
@@ -43,7 +57,37 @@ ApplicationController::~ApplicationController()
 
 QString ApplicationController::appName() const
 {
-    return QStringLiteral("Xiaoxiong Music Player");
+    return tr("小熊音乐播放器");
+}
+
+int ApplicationController::uiLanguageRevision() const
+{
+    return m_uiLanguageRevision;
+}
+
+void ApplicationController::setUiTranslationService(UiTranslationService *translationService)
+{
+    m_translationService = translationService;
+}
+
+bool ApplicationController::applyUiLanguage()
+{
+    if (!m_translationService || !m_settingsService) {
+        return false;
+    }
+
+    m_translationService->applyLanguage(m_settingsService->language());
+    if (m_playbackService) {
+        m_playbackService->retranslateUi();
+    }
+    bumpUiLanguageRevision();
+    return true;
+}
+
+void ApplicationController::bumpUiLanguageRevision()
+{
+    ++m_uiLanguageRevision;
+    emit uiLanguageRevisionChanged();
 }
 
 QString ApplicationController::healthCheck() const
@@ -114,4 +158,9 @@ QObject *ApplicationController::lyricsService() const
 QObject *ApplicationController::settingsService() const
 {
     return m_settingsService;
+}
+
+QObject *ApplicationController::audioVisualizer() const
+{
+    return m_audioVisualizerService;
 }

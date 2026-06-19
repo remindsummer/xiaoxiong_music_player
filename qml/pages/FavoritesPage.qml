@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../components" as Components
 import "../theme" as ThemeTokens
 
 Rectangle {
@@ -96,7 +97,7 @@ Rectangle {
         spacing: theme.space3
 
         Label {
-            text: "我喜欢"
+            text: qsTr("我喜欢")
             font.bold: true
             font.family: theme.fontFamily
             font.pixelSize: theme.fontH1
@@ -104,7 +105,7 @@ Rectangle {
         }
 
         Label {
-            text: "共 " + root.trackItems.length + " 首 · 点击播放栏红心可添加/移除 · 移除仅取消收藏，不删除本地文件"
+            text: qsTr("共 %1 首 · 点击播放栏红心可添加/移除 · 移除仅取消收藏，不删除本地文件").arg(root.trackItems.length)
             wrapMode: Text.WordWrap
             color: theme.colorTextSecondary
             font.family: theme.fontFamily
@@ -118,12 +119,9 @@ Rectangle {
 
             Item { Layout.fillWidth: true }
 
-            Button {
-                text: "播放全部"
+            Components.PrimaryButton {
+                text: qsTr("播放全部")
                 enabled: !!playback && root.trackItems.length > 0
-                hoverEnabled: true
-                font.family: theme.fontFamily
-                font.pixelSize: theme.fontBody
                 onClicked: {
                     const playable = []
                     for (let i = 0; i < root.trackItems.length; ++i) {
@@ -136,33 +134,14 @@ Rectangle {
                         playback.playQueue(playable, 0)
                     }
                 }
-                background: Rectangle {
-                    radius: theme.radiusXs
-                    color: !parent.enabled
-                           ? Qt.rgba(59 / 255, 130 / 255, 246 / 255, 0.35)
-                           : (parent.down
-                              ? theme.colorPrimaryActive
-                              : (parent.hovered ? theme.colorPrimaryActive : theme.colorPrimary))
-                    border.width: 0
-                }
-                contentItem: Label {
-                    text: parent.text
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    color: "#ffffff"
-                    font.family: theme.fontFamily
-                    font.pixelSize: theme.fontBody
-                    font.weight: 600
-                }
             }
         }
 
-        Rectangle {
+        Components.GlassPanel {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            radius: theme.radiusMd
-            color: theme.colorBgPanel
-            border.color: theme.colorBorderDefault
+            cornerRadius: theme.radiusMd
+            padding: theme.space2
 
             ListView {
                 id: trackListView
@@ -189,7 +168,7 @@ Rectangle {
                     implicitHeight: 52
                     radius: theme.radiusSm
                     color: favDelegate.isPlaying
-                           ? Qt.rgba(59 / 255, 130 / 255, 246 / 255, 0.15)
+                           ? theme.colorPrimaryTint
                            : (favDelegate.hovered ? theme.colorBgHover : "transparent")
                     border.width: (favDelegate.isPlaying || favDelegate.hovered) ? 1 : 0
                     border.color: favDelegate.isPlaying ? theme.colorPrimaryActive : theme.colorBorderFocus
@@ -223,18 +202,17 @@ Rectangle {
 
                         Label {
                             Layout.fillWidth: true
-                            text: (favDelegate.resolvedTrack && favDelegate.resolvedTrack.title || "未知标题")
+                            text: (favDelegate.resolvedTrack && favDelegate.resolvedTrack.title || qsTr("未知标题"))
                                   + " - "
-                                  + (favDelegate.resolvedTrack && favDelegate.resolvedTrack.artist || "未知歌手")
+                                  + (favDelegate.resolvedTrack && favDelegate.resolvedTrack.artist || qsTr("未知歌手"))
                             color: favDelegate.isPlaying ? theme.colorPrimaryActive : theme.colorTextPrimary
                             font.family: theme.fontFamily
                             font.pixelSize: theme.fontBody
                             elide: Text.ElideMiddle
                         }
 
-                        Button {
-                            text: "移除"
-                            hoverEnabled: true
+                        Components.DangerButton {
+                            text: qsTr("移除")
                             onClicked: {
                                 if (playlistService && favDelegate.modelData && favDelegate.modelData.path) {
                                     playlistService.removeTrack(playlistService.favoritesPlaylistId(),
@@ -242,21 +220,6 @@ Rectangle {
                                     playlistService.saveToStorage()
                                     root.refreshTrackItems()
                                 }
-                            }
-                            background: Rectangle {
-                                radius: theme.radiusXs
-                                color: parent.down
-                                       ? Qt.rgba(220 / 255, 38 / 255, 38 / 255, 0.95)
-                                       : (parent.hovered ? Qt.rgba(220 / 255, 38 / 255, 38 / 255, 0.9) : theme.colorStateError)
-                                border.width: 0
-                            }
-                            contentItem: Label {
-                                text: parent.text
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                                color: "#ffffff"
-                                font.family: theme.fontFamily
-                                font.pixelSize: theme.fontCaption
                             }
                         }
                     }

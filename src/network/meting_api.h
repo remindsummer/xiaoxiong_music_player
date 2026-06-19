@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QStringList>
 #include <QUrl>
@@ -27,8 +28,23 @@ QString songArtist(const QJsonObject &song);
 // 构造 search 关键词（歌名 + 歌手）。
 QString buildSearchKeyword(const QString &title, const QString &artist);
 
+// 从路径/标题/online:key 中提取嵌入的网易云歌曲 ID（如文件名末尾 - 26127770）。
+QString extractEmbeddedNeteaseId(const QString &text);
+
+struct MetingSearchParseResult {
+    QJsonArray songs;
+    QString errorMessage;
+    bool shouldTryNextMirror = false;
+};
+
+// 解析 Meting search 响应；镜像不支持 search 时会标记 shouldTryNextMirror。
+MetingSearchParseResult parseSearchResponse(const QByteArray &jsonData);
+
 // 从 Meting search JSON 响应中提取首条结果的 pic URL，失败返回空。
 QString picUrlFromSearchResponse(const QByteArray &jsonData);
+
+// 确保镜像列表包含当前可用的 search 镜像（用于升级旧配置）。
+QStringList ensureWorkingApiMirrors(const QStringList &bases);
 
 void applyCommonRequestHeaders(QNetworkRequest &request);
 

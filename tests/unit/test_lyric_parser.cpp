@@ -10,6 +10,9 @@ private slots:
     void shouldParseAndSortByTimestamp();
     void shouldSupportMultiTimestampLine();
     void shouldIgnoreMetadataAndInvalidTags();
+    void shouldSkipNeteaseMetadataTimestampSuffix();
+    void shouldReturnEmptyForMetadataOnlyLrc();
+    void shouldReturnEmptyForPlainTextContent();
 };
 
 void TestLyricParser::shouldParseAndSortByTimestamp()
@@ -58,6 +61,40 @@ void TestLyricParser::shouldIgnoreMetadataAndInvalidTags()
     QCOMPARE(lines.size(), 1);
     QCOMPARE(lines.at(0).timestampMs, 15200);
     QCOMPARE(lines.at(0).text, QStringLiteral("valid line"));
+}
+
+void TestLyricParser::shouldSkipNeteaseMetadataTimestampSuffix()
+{
+    LyricParser parser;
+    const QString lrc = QStringLiteral(
+        "[00:00.00-1] 作曲 : Kenneth Fitzsimmons\n"
+        "[00:03.989]There is a towel\n");
+
+    const QVector<LyricLine> lines = parser.parseLrc(lrc);
+
+    QCOMPARE(lines.size(), 1);
+    QCOMPARE(lines.at(0).timestampMs, 3989);
+    QCOMPARE(lines.at(0).text, QStringLiteral("There is a towel"));
+}
+
+void TestLyricParser::shouldReturnEmptyForMetadataOnlyLrc()
+{
+    LyricParser parser;
+    const QString lrc = QStringLiteral(
+        "[00:00.00-1] 作词 : Sarah Connor\n"
+        "[00:00.00-1] 作曲 : Sarah Connor\n");
+
+    QCOMPARE(parser.parseLrc(lrc).size(), 0);
+}
+
+void TestLyricParser::shouldReturnEmptyForPlainTextContent()
+{
+    LyricParser parser;
+    const QString lrc = QStringLiteral(
+        "hello world\n"
+        "line two\n");
+
+    QCOMPARE(parser.parseLrc(lrc).size(), 0);
 }
 
 QTEST_MAIN(TestLyricParser)

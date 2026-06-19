@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../components" as Components
 import "../theme" as ThemeTokens
 
 Rectangle {
@@ -20,6 +21,24 @@ Rectangle {
         id: theme
     }
 
+    ButtonGroup {
+        id: spectrumStyleGroup
+    }
+
+    readonly property bool spectrumOptionsEnabled: root.settingsReady && root.settings.spectrumEnabled
+
+    function syncSpectrumStyleRadios() {
+        if (!root.settingsReady) {
+            return
+        }
+        const style = root.settings.spectrumStyle
+        spectrumStyleSmooth.checked = style === "smoothMirror"
+        spectrumStyleBars.checked = style === "mirrorBars"
+        spectrumStyleLine.checked = style === "lineTrace"
+        spectrumStyleUpper.checked = style === "upperGlow"
+        spectrumStyleDots.checked = style === "particleDots"
+    }
+
     function syncForm() {
         if (!root.settingsReady) {
             return
@@ -29,6 +48,12 @@ Rectangle {
         scanPathField.text = root.settings.defaultScanDirectory
         downloadPathField.text = root.settings.defaultDownloadDirectory
         lyricSwitch.checked = root.settings.lyricOnlineEnabled
+        spectrumEnabledSwitch.checked = root.settings.spectrumEnabled
+        spectrumFpsSlider.value = root.settings.spectrumFps
+        spectrumFpsValueLabel.text = root.settings.spectrumFps + " FPS"
+        spectrumOpacitySlider.value = root.settings.spectrumOpacity
+        spectrumOpacityValueLabel.text = Math.round(root.settings.spectrumOpacity * 100) + "%"
+        syncSpectrumStyleRadios()
         metingApiBasesField.text = root.settings.metingApiBases
     }
 
@@ -37,7 +62,7 @@ Rectangle {
         spacing: theme.space3
 
         Label {
-            text: "设置"
+            text: qsTr("设置")
             font.bold: true
             font.family: theme.fontFamily
             font.pixelSize: theme.fontH1
@@ -46,21 +71,19 @@ Rectangle {
 
         Label {
             text: root.settingsReady
-                  ? "修改后点击保存，配置会持久化到本地。"
-                  : "settings 服务尚未暴露到 appController.settingsService"
+                  ? qsTr("修改后点击保存，配置会持久化到本地。")
+                  : qsTr("settings 服务尚未暴露到 appController.settingsService")
             wrapMode: Text.Wrap
             color: root.settingsReady ? theme.colorTextSecondary : theme.colorStateWarning
             font.family: theme.fontFamily
             font.pixelSize: theme.fontBody
         }
 
-        Rectangle {
+        Components.GlassPanel {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            radius: theme.radiusMd
-            color: theme.colorBgPanel
-            border.width: 1
-            border.color: theme.colorBorderDefault
+            cornerRadius: theme.radiusMd
+            padding: theme.space4
             clip: true
 
             ScrollView {
@@ -83,14 +106,14 @@ Rectangle {
                     Layout.fillWidth: true
 
                     Label {
-                        text: "外观"
+                        text: qsTr("外观")
                         font.bold: true
                         font.family: theme.fontFamily
                         font.pixelSize: theme.fontBody
                         color: theme.colorTextPrimary
                     }
                     Label {
-                        text: "主题模式（浅色/深色/跟随系统）"
+                        text: qsTr("主题模式（浅色/深色/跟随系统）")
                         color: theme.colorTextSecondary
                         font.family: theme.fontFamily
                         font.pixelSize: theme.fontCaption
@@ -99,9 +122,9 @@ Rectangle {
                         id: themeCombo
                         Layout.fillWidth: true
                         model: [
-                            { label: "跟随系统", value: "system" },
-                            { label: "浅色", value: "light" },
-                            { label: "深色", value: "dark" }
+                            { label: qsTr("跟随系统"), value: "system" },
+                            { label: qsTr("浅色"), value: "light" },
+                            { label: qsTr("深色"), value: "dark" }
                         ]
                         textRole: "label"
 
@@ -128,58 +151,78 @@ Rectangle {
                     }
 
                     Label {
-                        text: "通用"
+                        text: qsTr("通用")
                         font.bold: true
                         font.family: theme.fontFamily
                         font.pixelSize: theme.fontBody
                         color: theme.colorTextPrimary
                     }
                     Label {
-                        text: "界面语言"
+                        text: qsTr("界面语言")
                         color: theme.colorTextSecondary
                         font.family: theme.fontFamily
                         font.pixelSize: theme.fontCaption
                     }
-                    ComboBox {
-                        id: languageCombo
+                    ColumnLayout {
                         Layout.fillWidth: true
-                        model: [
-                            { label: "简体中文", value: "zh_CN" },
-                            { label: "English", value: "en_US" }
-                        ]
-                        textRole: "label"
+                        spacing: theme.space1
 
-                        function syncFromSettings() {
-                            if (!root.settingsReady) {
-                                return
-                            }
-                            const currentLanguage = root.settings.language
-                            for (let i = 0; i < model.length; ++i) {
-                                if (model[i].value === currentLanguage) {
-                                    currentIndex = i
+                        ComboBox {
+                            id: languageCombo
+                            Layout.fillWidth: true
+                            model: [
+                                { label: qsTr("简体中文"), value: "zh_CN" },
+                                { label: qsTr("English"), value: "en_US" }
+                            ]
+                            textRole: "label"
+
+                            function syncFromSettings() {
+                                if (!root.settingsReady) {
                                     return
                                 }
+                                const currentLanguage = root.settings.language
+                                for (let i = 0; i < model.length; ++i) {
+                                    if (model[i].value === currentLanguage) {
+                                        currentIndex = i
+                                        return
+                                    }
+                                }
+                                currentIndex = 0
                             }
-                            currentIndex = 0
+
+                            Component.onCompleted: syncFromSettings()
+                            onActivated: {
+                                if (root.settingsReady) {
+                                    root.settings.language = model[currentIndex].value
+                                    if (root.appController) {
+                                        root.appController.applyUiLanguage()
+                                    }
+                                    languageApplyHint.text = qsTr("界面语言已更新。")
+                                }
+                            }
                         }
 
-                        Component.onCompleted: syncFromSettings()
-                        onActivated: {
-                            if (root.settingsReady) {
-                                root.settings.language = model[currentIndex].value
-                            }
+                        Label {
+                            id: languageApplyHint
+                            Layout.fillWidth: true
+                            text: ""
+                            visible: text !== ""
+                            wrapMode: Text.Wrap
+                            color: theme.colorTextMuted
+                            font.family: theme.fontFamily
+                            font.pixelSize: theme.fontCaption
                         }
                     }
 
                     Label {
-                        text: "通用"
+                        text: qsTr("通用")
                         font.bold: true
                         font.family: theme.fontFamily
                         font.pixelSize: theme.fontBody
                         color: theme.colorTextPrimary
                     }
                     Label {
-                        text: "默认扫描目录"
+                        text: qsTr("默认扫描目录")
                         color: theme.colorTextSecondary
                         font.family: theme.fontFamily
                         font.pixelSize: theme.fontCaption
@@ -187,7 +230,7 @@ Rectangle {
                     TextField {
                         id: scanPathField
                         Layout.fillWidth: true
-                        placeholderText: "例如: D:/Music"
+                        placeholderText: qsTr("例如: D:/Music")
                         onEditingFinished: {
                             if (root.settingsReady) {
                                 root.settings.defaultScanDirectory = text
@@ -196,14 +239,14 @@ Rectangle {
                     }
 
                     Label {
-                        text: "通用"
+                        text: qsTr("通用")
                         font.bold: true
                         font.family: theme.fontFamily
                         font.pixelSize: theme.fontBody
                         color: theme.colorTextPrimary
                     }
                     Label {
-                        text: "在线下载目录"
+                        text: qsTr("在线下载目录")
                         color: theme.colorTextSecondary
                         font.family: theme.fontFamily
                         font.pixelSize: theme.fontCaption
@@ -211,7 +254,7 @@ Rectangle {
                     TextField {
                         id: downloadPathField
                         Layout.fillWidth: true
-                        placeholderText: "例如: D:/Music/Downloads"
+                        placeholderText: qsTr("例如: D:/Music/Downloads")
                         onEditingFinished: {
                             if (root.settingsReady) {
                                 root.settings.defaultDownloadDirectory = text
@@ -220,14 +263,14 @@ Rectangle {
                     }
 
                     Label {
-                        text: "网络"
+                        text: qsTr("网络")
                         font.bold: true
                         font.family: theme.fontFamily
                         font.pixelSize: theme.fontBody
                         color: theme.colorTextPrimary
                     }
                     Label {
-                        text: "歌词联网开关"
+                        text: qsTr("歌词联网开关")
                         color: theme.colorTextSecondary
                         font.family: theme.fontFamily
                         font.pixelSize: theme.fontCaption
@@ -238,6 +281,209 @@ Rectangle {
                             if (root.settingsReady) {
                                 root.settings.lyricOnlineEnabled = checked
                             }
+                        }
+                    }
+
+                    Label {
+                        text: qsTr("播放")
+                        font.bold: true
+                        font.family: theme.fontFamily
+                        font.pixelSize: theme.fontBody
+                        color: theme.colorTextPrimary
+                    }
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: theme.space1
+
+                        Label {
+                            text: qsTr("歌词页频谱显示")
+                            color: theme.colorTextSecondary
+                            font.family: theme.fontFamily
+                            font.pixelSize: theme.fontCaption
+                        }
+                        Label {
+                            text: qsTr("开启后会进行音频分析与界面绘制，可能增加 CPU 占用。")
+                            wrapMode: Text.Wrap
+                            color: theme.colorTextMuted
+                            font.family: theme.fontFamily
+                            font.pixelSize: theme.fontCaption
+                            Layout.fillWidth: true
+                        }
+                    }
+                    Switch {
+                        id: spectrumEnabledSwitch
+                        onToggled: {
+                            if (root.settingsReady) {
+                                root.settings.spectrumEnabled = checked
+                            }
+                        }
+                    }
+
+                    Label {
+                        text: qsTr("播放")
+                        font.bold: true
+                        font.family: theme.fontFamily
+                        font.pixelSize: theme.fontBody
+                        color: theme.colorTextPrimary
+                    }
+                    Label {
+                        text: qsTr("频谱刷新率（15–60 FPS）")
+                        color: theme.colorTextSecondary
+                        font.family: theme.fontFamily
+                        font.pixelSize: theme.fontCaption
+                    }
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: theme.space1
+
+                        Slider {
+                            id: spectrumFpsSlider
+                            Layout.fillWidth: true
+                            from: 15
+                            to: 60
+                            stepSize: 1
+                            onMoved: {
+                                if (root.settingsReady) {
+                                    const fps = Math.round(value)
+                                    root.settings.spectrumFps = fps
+                                    spectrumFpsValueLabel.text = fps + " FPS"
+                                }
+                            }
+                            onValueChanged: {
+                                spectrumFpsValueLabel.text = Math.round(value) + " FPS"
+                            }
+                        }
+
+                        Label {
+                            id: spectrumFpsValueLabel
+                            text: "30 FPS"
+                            color: theme.colorTextMuted
+                            font.family: theme.fontFamily
+                            font.pixelSize: theme.fontCaption
+                        }
+                    }
+
+                    Label {
+                        text: qsTr("播放")
+                        font.bold: true
+                        font.family: theme.fontFamily
+                        font.pixelSize: theme.fontBody
+                        color: theme.colorTextPrimary
+                    }
+                    Label {
+                        text: qsTr("频谱样式")
+                        color: theme.colorTextSecondary
+                        font.family: theme.fontFamily
+                        font.pixelSize: theme.fontCaption
+                    }
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: theme.space1
+                        enabled: root.spectrumOptionsEnabled
+
+                        RadioButton {
+                            id: spectrumStyleSmooth
+                            text: qsTr("平滑镜像")
+                            ButtonGroup.group: spectrumStyleGroup
+                            font.family: theme.fontFamily
+                            font.pixelSize: theme.fontCaption
+                            onClicked: {
+                                if (root.settingsReady) {
+                                    root.settings.spectrumStyle = "smoothMirror"
+                                }
+                            }
+                        }
+                        RadioButton {
+                            id: spectrumStyleBars
+                            text: qsTr("镜像柱状")
+                            ButtonGroup.group: spectrumStyleGroup
+                            font.family: theme.fontFamily
+                            font.pixelSize: theme.fontCaption
+                            onClicked: {
+                                if (root.settingsReady) {
+                                    root.settings.spectrumStyle = "mirrorBars"
+                                }
+                            }
+                        }
+                        RadioButton {
+                            id: spectrumStyleLine
+                            text: qsTr("线条描边")
+                            ButtonGroup.group: spectrumStyleGroup
+                            font.family: theme.fontFamily
+                            font.pixelSize: theme.fontCaption
+                            onClicked: {
+                                if (root.settingsReady) {
+                                    root.settings.spectrumStyle = "lineTrace"
+                                }
+                            }
+                        }
+                        RadioButton {
+                            id: spectrumStyleUpper
+                            text: qsTr("上半光晕")
+                            ButtonGroup.group: spectrumStyleGroup
+                            font.family: theme.fontFamily
+                            font.pixelSize: theme.fontCaption
+                            onClicked: {
+                                if (root.settingsReady) {
+                                    root.settings.spectrumStyle = "upperGlow"
+                                }
+                            }
+                        }
+                        RadioButton {
+                            id: spectrumStyleDots
+                            text: qsTr("点阵屏")
+                            ButtonGroup.group: spectrumStyleGroup
+                            font.family: theme.fontFamily
+                            font.pixelSize: theme.fontCaption
+                            onClicked: {
+                                if (root.settingsReady) {
+                                    root.settings.spectrumStyle = "particleDots"
+                                }
+                            }
+                        }
+                    }
+
+                    Label {
+                        text: qsTr("播放")
+                        font.bold: true
+                        font.family: theme.fontFamily
+                        font.pixelSize: theme.fontBody
+                        color: theme.colorTextPrimary
+                    }
+                    Label {
+                        text: qsTr("频谱透明度")
+                        color: theme.colorTextSecondary
+                        font.family: theme.fontFamily
+                        font.pixelSize: theme.fontCaption
+                    }
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: theme.space1
+                        enabled: root.spectrumOptionsEnabled
+
+                        Slider {
+                            id: spectrumOpacitySlider
+                            Layout.fillWidth: true
+                            from: 0.15
+                            to: 1.0
+                            stepSize: 0.05
+                            onMoved: {
+                                if (root.settingsReady) {
+                                    root.settings.spectrumOpacity = value
+                                    spectrumOpacityValueLabel.text = Math.round(value * 100) + "%"
+                                }
+                            }
+                            onValueChanged: {
+                                spectrumOpacityValueLabel.text = Math.round(value * 100) + "%"
+                            }
+                        }
+
+                        Label {
+                            id: spectrumOpacityValueLabel
+                            text: "58%"
+                            color: theme.colorTextMuted
+                            font.family: theme.fontFamily
+                            font.pixelSize: theme.fontCaption
                         }
                     }
                 }
@@ -251,7 +497,7 @@ Rectangle {
                 }
 
                 Label {
-                    text: "在线搜索、歌词、封面与流媒体解析使用的 Meting 接口。每行填写一个镜像根地址（需含 /api 或 /meting 路径），请求失败时会按顺序尝试下一行。"
+                    text: qsTr("在线搜索、歌词、封面与流媒体解析使用的 Meting 接口。每行填写一个镜像根地址（需含 /api 或 /meting 路径），请求失败时会按顺序尝试下一行。")
                     wrapMode: Text.Wrap
                     color: theme.colorTextSecondary
                     font.family: theme.fontFamily
@@ -264,7 +510,7 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 88
                     wrapMode: TextArea.Wrap
-                    placeholderText: "https://meting.elysium-stack.cn/api\nhttps://api.injahow.cn/meting"
+                    placeholderText: "https://meting-api-omega.vercel.app/api\nhttps://api.injahow.cn/meting"
                     font.family: theme.fontFamily
                     font.pixelSize: theme.fontCaption
                     onEditingFinished: {
@@ -276,8 +522,9 @@ Rectangle {
 
                 Label {
                     text: root.settingsReady
-                          ? ("配置文件：" + root.settings.storageLocation
-                             + "\n应用数据目录（歌单、曲库缓存、歌词缓存等）：" + root.settings.appDataLocation)
+                          ? qsTr("配置文件：%1\n应用数据目录（歌单、曲库缓存、歌词缓存等）：%2")
+                                .arg(root.settings.storageLocation)
+                                .arg(root.settings.appDataLocation)
                           : ""
                     wrapMode: Text.Wrap
                     color: theme.colorTextMuted
@@ -287,7 +534,7 @@ Rectangle {
                 }
 
                 Label {
-                    text: "快捷键：Ctrl+P 播放/暂停，Ctrl+Left 上一首，Ctrl+Right 下一首，Ctrl+F 聚焦曲库搜索。"
+                    text: qsTr("快捷键：Ctrl+P 播放/暂停，Ctrl+Left 上一首，Ctrl+Right 下一首，Ctrl+F 聚焦曲库搜索。")
                     wrapMode: Text.Wrap
                     color: theme.colorTextMuted
                     font.family: theme.fontFamily
@@ -298,7 +545,7 @@ Rectangle {
                     spacing: theme.space2
 
                     Button {
-                        text: "保存设置"
+                        text: qsTr("保存设置")
                         hoverEnabled: true
                         onClicked: {
                             if (root.settingsReady) {
@@ -325,11 +572,14 @@ Rectangle {
                     }
 
                     Button {
-                        text: "重新加载"
+                        text: qsTr("重新加载")
                         hoverEnabled: true
                         onClicked: {
                             root.settings.load()
                             root.syncForm()
+                            if (root.appController) {
+                                root.appController.applyUiLanguage()
+                            }
                         }
                         background: Rectangle {
                             radius: theme.radiusXs
@@ -340,11 +590,14 @@ Rectangle {
                     }
 
                     Button {
-                        text: "恢复默认"
+                        text: qsTr("恢复默认")
                         hoverEnabled: true
                         onClicked: {
                             root.settings.reset()
                             root.syncForm()
+                            if (root.appController) {
+                                root.appController.applyUiLanguage()
+                            }
                         }
                         background: Rectangle {
                             radius: theme.radiusXs
@@ -378,6 +631,16 @@ Rectangle {
         function onDefaultScanDirectoryChanged() { scanPathField.text = root.settings.defaultScanDirectory }
         function onDefaultDownloadDirectoryChanged() { downloadPathField.text = root.settings.defaultDownloadDirectory }
         function onLyricOnlineEnabledChanged() { lyricSwitch.checked = root.settings.lyricOnlineEnabled }
+        function onSpectrumEnabledChanged() { spectrumEnabledSwitch.checked = root.settings.spectrumEnabled }
+        function onSpectrumFpsChanged() {
+            spectrumFpsSlider.value = root.settings.spectrumFps
+            spectrumFpsValueLabel.text = root.settings.spectrumFps + " FPS"
+        }
+        function onSpectrumStyleChanged() { root.syncSpectrumStyleRadios() }
+        function onSpectrumOpacityChanged() {
+            spectrumOpacitySlider.value = root.settings.spectrumOpacity
+            spectrumOpacityValueLabel.text = Math.round(root.settings.spectrumOpacity * 100) + "%"
+        }
         function onMetingApiBasesChanged() { metingApiBasesField.text = root.settings.metingApiBases }
     }
 }

@@ -1,8 +1,11 @@
 #include "playback_service.h"
 
 #include "../artwork/cover_art_service.h"
+#include "../artwork/library_cover_prefetcher.h"
 #include "../network/meting_api.h"
+#include "audio_visualizer_service.h"
 
+#include <QAudioBufferOutput>
 #include <QAudioOutput>
 #include <QDir>
 #include <QFile>
@@ -10,6 +13,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QMediaMetaData>
 #include <QStandardPaths>
 #include <QMediaPlayer>
 #include <QNetworkAccessManager>
@@ -29,6 +33,9 @@ PlaybackService::PlaybackService(QObject *parent)
     m_audioOutput->setVolume(0.8f);
     m_player->setAudioOutput(m_audioOutput);
 
+    m_bufferOutput = new QAudioBufferOutput(this);
+    m_player->setAudioBufferOutput(m_bufferOutput);
+
     connect(m_player, &QMediaPlayer::positionChanged, this, [this]() {
         emit positionChanged();
     });
@@ -46,7 +53,13 @@ PlaybackService::PlaybackService(QObject *parent)
         } else {
             updateStatusText();
         }
+        if (status == QMediaPlayer::LoadedMedia || status == QMediaPlayer::BufferedMedia) {
+            updateTrackMetadata();
+        }
         applyPendingRestorePosition(status);
+    });
+    connect(m_player, &QMediaPlayer::metaDataChanged, this, [this]() {
+        updateTrackMetadata();
     });
     connect(m_player, &QMediaPlayer::errorOccurred, this, [this](QMediaPlayer::Error, const QString &errorString) {
         setError(errorString);
@@ -64,6 +77,32 @@ void PlaybackService::setCoverArtService(CoverArtService *coverArt)
     m_coverArt = coverArt;
     if (m_coverArt) {
         connect(m_coverArt, &CoverArtService::coverReady, this, &PlaybackService::onCoverReady);
+    }
+}
+
+void PlaybackService::setCoverPrefetcher(LibraryCoverPrefetcher *prefetcher)
+{
+    if (m_coverPrefetcher) {
+        disconnect(m_coverPrefetcher, nullptr, this, nullptr);
+    }
+    m_coverPrefetcher = prefetcher;
+    if (m_coverPrefetcher) {
+        connect(m_coverPrefetcher,
+                &LibraryCoverPrefetcher::fetchFinished,
+                this,
+                &PlaybackService::onCoverPrefetchFinished);
+    }
+}
+
+void PlaybackService::setAudioVisualizer(AudioVisualizerService *visualizer)
+{
+    if (m_visualizer && m_bufferOutput) {
+        disconnect(m_bufferOutput, nullptr, m_visualizer, nullptr);
+    }
+    m_visualizer = visualizer;
+    if (m_visualizer && m_bufferOutput) {
+        connect(m_bufferOutput, &QAudioBufferOutput::audioBufferReceived,
+                m_visualizer, &AudioVisualizerService::feedBuffer);
     }
 }
 
@@ -148,13 +187,54 @@ bool PlaybackService::isValidQueueItem(const QueueItem &item)
 QString PlaybackService::currentTrackName() const
 {
     if (m_currentIndex < 0 || m_currentIndex >= m_queue.size()) {
-        return QStringLiteral("未选择歌曲");
+        return tr("未选择歌曲");
     }
     const QueueItem &item = m_queue.at(m_currentIndex);
     if (!item.artist.isEmpty()) {
         return QStringLiteral("%1 - %2").arg(item.title, item.artist);
     }
     return item.title;
+}
+
+QString PlaybackService::currentTrackTitle() const
+{
+    if (m_currentIndex < 0 || m_currentIndex >= m_queue.size()) {
+        return QString();
+    }
+    return m_queue.at(m_currentIndex).title;
+}
+
+QString PlaybackService::currentTrackArtist() const
+{
+    if (m_currentIndex < 0 || m_currentIndex >= m_queue.size()) {
+        return QString();
+    }
+    return m_queue.at(m_currentIndex).artist;
+}
+
+QString PlaybackService::currentFileFormat() const
+{
+    return m_currentFileFormat;
+}
+
+int PlaybackService::currentAudioBitrate() const
+{
+    return m_currentAudioBitrate;
+}
+
+int PlaybackService::currentSampleRate() const
+{
+    return m_currentSampleRate;
+}
+
+int PlaybackService::currentBitDepth() const
+{
+    return m_currentBitDepth;
+}
+
+bool PlaybackService::currentIsHiRes() const
+{
+    return m_currentIsHiRes;
 }
 
 QString PlaybackService::currentPath() const
@@ -210,6 +290,24 @@ QString PlaybackService::currentCoverPath() const
     return m_currentCoverPath;
 }
 
+QString PlaybackService::coverFetchState() const
+{
+    switch (m_coverFetchState) {
+    case CoverFetchState::Fetching:
+        return QStringLiteral("fetching");
+    case CoverFetchState::Failed:
+        return QStringLiteral("failed");
+    case CoverFetchState::Idle:
+    default:
+        return QStringLiteral("idle");
+    }
+}
+
+QString PlaybackService::coverFetchLastError() const
+{
+    return m_coverFetchLastError;
+}
+
 int PlaybackService::currentIndex() const
 {
     return m_currentIndex;
@@ -258,16 +356,21 @@ int PlaybackService::playbackState() const
     }
 }
 
+bool PlaybackService::isPlaying() const
+{
+    return state() == PlaybackState::Playing;
+}
+
 QString PlaybackService::playbackStateText() const
 {
     switch (state()) {
     case PlaybackState::Playing:
-        return QStringLiteral("播放中");
+        return tr("播放中");
     case PlaybackState::Paused:
-        return QStringLiteral("已暂停");
+        return tr("已暂停");
     case PlaybackState::Stopped:
     default:
-        return QStringLiteral("已停止");
+        return tr("已停止");
     }
 }
 
@@ -280,15 +383,15 @@ QString PlaybackService::playbackModeText() const
 {
     switch (m_playbackMode) {
     case PlaybackMode::Sequential:
-        return QStringLiteral("顺序");
+        return tr("顺序");
     case PlaybackMode::RepeatAll:
-        return QStringLiteral("列表循环");
+        return tr("列表循环");
     case PlaybackMode::RepeatOne:
-        return QStringLiteral("单曲循环");
+        return tr("单曲循环");
     case PlaybackMode::Shuffle:
-        return QStringLiteral("随机");
+        return tr("随机");
     default:
-        return QStringLiteral("未知");
+        return tr("未知");
     }
 }
 
@@ -324,14 +427,14 @@ PlaybackService::PlaybackState PlaybackService::state() const
 void PlaybackService::openFile(const QUrl &fileUrl)
 {
     if (!fileUrl.isValid() || fileUrl.isEmpty()) {
-        setError(QStringLiteral("无效的文件地址"));
+        setError(tr("无效的文件地址"));
         return;
     }
 
     const QString localPath = fileUrl.isLocalFile() ? fileUrl.toLocalFile() : fileUrl.toString();
     const QFileInfo fileInfo(localPath);
     if (!fileInfo.exists() || !fileInfo.isFile()) {
-        setError(QStringLiteral("文件不存在或不可读取"));
+        setError(tr("文件不存在或不可读取"));
         return;
     }
 
@@ -358,7 +461,7 @@ void PlaybackService::openFilePath(const QString &filePath)
 {
     const QString normalizedPath = filePath.trimmed();
     if (normalizedPath.isEmpty()) {
-        setError(QStringLiteral("无效的文件路径"));
+        setError(tr("无效的文件路径"));
         return;
     }
 
@@ -386,7 +489,7 @@ void PlaybackService::playQueue(const QVariantList &tracks, int startIndex)
     }
 
     if (nextQueue.isEmpty()) {
-        setError(QStringLiteral("没有可播放的曲目"));
+        setError(tr("没有可播放的曲目"));
         return;
     }
 
@@ -402,7 +505,7 @@ void PlaybackService::enqueueAndPlay(const QVariantMap &track)
 {
     const QueueItem item = makeItemFromVariant(track);
     if (!isValidQueueItem(item)) {
-        setError(QStringLiteral("没有可播放的曲目"));
+        setError(tr("没有可播放的曲目"));
         return;
     }
 
@@ -456,6 +559,10 @@ void PlaybackService::removeFromQueue(int index)
         m_player->setSource(QUrl());
         m_currentCoverPath.clear();
         emit currentCoverPathChanged();
+        resetTrackMetadata();
+        if (m_visualizer) {
+            m_visualizer->reset();
+        }
         emit currentTrackChanged();
         emit queueChanged();
         emit positionChanged();
@@ -638,6 +745,8 @@ void PlaybackService::loadTrack(int index, bool autoplay)
         return;
     }
 
+    m_pendingRestorePositionMs = -1;
+
     const QueueItem &item = m_queue.at(index);
     if (item.isOnline) {
         resolveOnlineStreamAndLoad(index, autoplay);
@@ -646,6 +755,8 @@ void PlaybackService::loadTrack(int index, bool autoplay)
 
     m_currentIndex = index;
     clearError();
+    resetTrackMetadata();
+    resetCoverFetchState();
     m_player->setSource(m_queue.at(index).url);
     emit currentTrackChanged();
     updateCoverForCurrentTrack();
@@ -666,19 +777,21 @@ void PlaybackService::resolveOnlineStreamAndLoad(int index, bool autoplay)
     }
 
     if (m_resolveReply) {
-        m_resolveReply->abort();
-        m_resolveReply->deleteLater();
+        QNetworkReply *staleReply = m_resolveReply;
         m_resolveReply = nullptr;
+        staleReply->abort();
+        staleReply->deleteLater();
     }
 
     const QueueItem &item = m_queue.at(index);
     if (item.streamApiUrl.isEmpty()) {
-        setError(QStringLiteral("缺少在线播放地址"));
+        setError(tr("缺少在线播放地址"));
         return;
     }
 
     m_currentIndex = index;
     clearError();
+    resetCoverFetchState();
     emit currentTrackChanged();
     updateCoverForCurrentTrack();
     emit queueChanged();
@@ -689,22 +802,33 @@ void PlaybackService::resolveOnlineStreamAndLoad(int index, bool autoplay)
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QNetworkRequest::NoLessSafeRedirectPolicy);
 
-    m_resolveReply = m_network->get(request);
-    connect(m_resolveReply, &QNetworkReply::finished, this, [this, index, autoplay]() {
-        handleResolveReply(index, autoplay);
+    QNetworkReply *reply = m_network->get(request);
+    m_resolveReply = reply;
+    connect(reply, &QNetworkReply::finished, this, [this, reply, index, autoplay]() {
+        handleResolveReply(reply, index, autoplay);
     });
 }
 
-void PlaybackService::handleResolveReply(int index, bool autoplay)
+void PlaybackService::handleResolveReply(QNetworkReply *reply, int index, bool autoplay)
 {
-    QNetworkReply *reply = m_resolveReply;
     if (!reply) {
         return;
     }
+
+    if (reply != m_resolveReply) {
+        reply->deleteLater();
+        return;
+    }
+
     m_resolveReply = nullptr;
 
+    if (reply->error() == QNetworkReply::OperationCanceledError) {
+        reply->deleteLater();
+        return;
+    }
+
     if (reply->error() != QNetworkReply::NoError) {
-        setError(QStringLiteral("获取在线播放链接失败：%1").arg(reply->errorString()));
+        setError(tr("获取在线播放链接失败：%1").arg(reply->errorString()));
         updateStatusText();
         reply->deleteLater();
         return;
@@ -728,12 +852,12 @@ void PlaybackService::handleResolveReply(int index, bool autoplay)
     }
 
     if (!streamUrl.isValid() || streamUrl.isEmpty()) {
-        setError(QStringLiteral("无法解析在线播放链接"));
+        setError(tr("无法解析在线播放链接"));
         updateStatusText();
         return;
     }
 
-    if (index < 0 || index >= m_queue.size()) {
+    if (index < 0 || index >= m_queue.size() || index != m_currentIndex) {
         return;
     }
 
@@ -771,11 +895,11 @@ void PlaybackService::updateStatusText()
 {
     QString nextStatus;
     if (!m_errorMessage.isEmpty()) {
-        nextStatus = QStringLiteral("错误: %1").arg(m_errorMessage);
+        nextStatus = tr("错误: %1").arg(m_errorMessage);
     } else if (m_currentIndex < 0) {
-        nextStatus = QStringLiteral("待机");
+        nextStatus = tr("待机");
     } else {
-        nextStatus = QStringLiteral("%1 | 模式: %2")
+        nextStatus = tr("%1 | 模式: %2")
                          .arg(playbackStateText(), playbackModeText());
     }
 
@@ -861,11 +985,94 @@ void PlaybackService::onCoverReady(const QString &trackKey, const QString &cover
     if (trackKey != m_coverRequestKey) {
         return;
     }
-    if (m_currentCoverPath == coverPath) {
+    if (m_currentCoverPath != coverPath) {
+        m_currentCoverPath = coverPath;
+        emit currentCoverPathChanged();
+    }
+
+    if (m_coverFetchState != CoverFetchState::Fetching) {
         return;
     }
-    m_currentCoverPath = coverPath;
-    emit currentCoverPathChanged();
+
+    if (coverPath.isEmpty()) {
+        setCoverFetchState(CoverFetchState::Failed);
+        m_coverFetchLastError = tr("未能获取封面");
+    } else {
+        resetCoverFetchState();
+    }
+    emit coverFetchStateChanged();
+}
+
+void PlaybackService::retryFetchCurrentCover()
+{
+    if (m_currentIndex < 0 || m_currentIndex >= m_queue.size()) {
+        return;
+    }
+    if (!m_currentCoverPath.isEmpty()) {
+        return;
+    }
+    if (m_coverFetchState == CoverFetchState::Fetching) {
+        return;
+    }
+
+    const QueueItem &item = m_queue.at(m_currentIndex);
+    m_coverRequestKey = item.path;
+    setCoverFetchState(CoverFetchState::Fetching);
+    m_coverFetchLastError.clear();
+    emit coverFetchStateChanged();
+
+    if (m_coverArt && (!item.picUrl.trimmed().isEmpty() || !item.onlineId.trimmed().isEmpty())) {
+        m_coverArt->requestCover(item.path, item.picUrl, item.server, item.onlineId);
+        return;
+    }
+
+    if (m_coverPrefetcher) {
+        m_coverPrefetcher->fetchNow(item.path, item.title, item.artist);
+        return;
+    }
+
+    setCoverFetchState(CoverFetchState::Failed);
+    m_coverFetchLastError = tr("封面服务不可用");
+    emit coverFetchStateChanged();
+}
+
+void PlaybackService::onCoverPrefetchFinished(const QString &path, bool success, const QString &message)
+{
+    if (path != m_coverRequestKey) {
+        return;
+    }
+
+    if (success) {
+        updateCoverForCurrentTrack();
+        if (m_coverFetchState == CoverFetchState::Fetching) {
+            resetCoverFetchState();
+            emit coverFetchStateChanged();
+        }
+        return;
+    }
+
+    if (m_coverFetchState != CoverFetchState::Fetching) {
+        return;
+    }
+
+    setCoverFetchState(CoverFetchState::Failed);
+    m_coverFetchLastError = message.isEmpty() ? tr("未找到匹配的封面") : message;
+    emit coverFetchStateChanged();
+}
+
+void PlaybackService::setCoverFetchState(CoverFetchState state)
+{
+    m_coverFetchState = state;
+}
+
+void PlaybackService::resetCoverFetchState()
+{
+    const bool hadVisibleState = m_coverFetchState != CoverFetchState::Idle || !m_coverFetchLastError.isEmpty();
+    m_coverFetchState = CoverFetchState::Idle;
+    m_coverFetchLastError.clear();
+    if (hadVisibleState) {
+        emit coverFetchStateChanged();
+    }
 }
 
 QString PlaybackService::defaultSessionPath() const
@@ -1025,4 +1232,87 @@ void PlaybackService::applyPendingRestorePosition(QMediaPlayer::MediaStatus stat
 
     m_player->setPosition(targetPosition);
     emit positionChanged();
+}
+
+void PlaybackService::resetTrackMetadata()
+{
+    m_currentFileFormat.clear();
+    m_currentAudioBitrate = 0;
+    m_currentSampleRate = 0;
+    m_currentBitDepth = 0;
+    m_currentIsHiRes = false;
+    emit trackMetadataChanged();
+}
+
+void PlaybackService::updateTrackMetadata()
+{
+    const QMediaMetaData metaData = m_player->metaData();
+    int bitrate = metaData.value(QMediaMetaData::AudioBitRate).toInt();
+    if (bitrate >= 10000) {
+        bitrate /= 1000;
+    }
+    int sampleRate = 0;
+
+    QString format;
+    const QString fileFormat = metaData.stringValue(QMediaMetaData::FileFormat).trimmed();
+    const QString audioCodec = metaData.stringValue(QMediaMetaData::AudioCodec).trimmed();
+    if (!fileFormat.isEmpty()) {
+        format = fileFormat.toUpper();
+    } else if (!audioCodec.isEmpty()) {
+        format = audioCodec.toUpper();
+    }
+
+    if (format.isEmpty() && m_currentIndex >= 0 && m_currentIndex < m_queue.size()) {
+        const QueueItem &item = m_queue.at(m_currentIndex);
+        if (item.isOnline) {
+            format = QStringLiteral("STREAM");
+        } else {
+            format = QFileInfo(item.path).suffix().toUpper();
+        }
+    }
+
+    int bitDepth = 0;
+    if (format == QStringLiteral("FLAC")) {
+        bitDepth = 24;
+        if (sampleRate == 0) {
+            sampleRate = 96000;
+        }
+    } else if (format == QStringLiteral("WAV")) {
+        bitDepth = 16;
+        if (sampleRate == 0) {
+            sampleRate = 44100;
+        }
+    } else if (format == QStringLiteral("MP3") && sampleRate == 0) {
+        sampleRate = 44100;
+    }
+
+    const bool hiRes = sampleRate >= 48000
+                       || ((format == QStringLiteral("FLAC") || format == QStringLiteral("WAV"))
+                           && bitrate >= 900);
+
+    const bool changed = format != m_currentFileFormat
+                         || bitrate != m_currentAudioBitrate
+                         || sampleRate != m_currentSampleRate
+                         || bitDepth != m_currentBitDepth
+                         || hiRes != m_currentIsHiRes;
+
+    m_currentFileFormat = format;
+    m_currentAudioBitrate = bitrate;
+    m_currentSampleRate = sampleRate;
+    m_currentBitDepth = bitDepth;
+    m_currentIsHiRes = hiRes;
+
+    if (changed) {
+        emit trackMetadataChanged();
+    }
+}
+
+void PlaybackService::retranslateUi()
+{
+    updateStatusText();
+    emit playbackStateChanged();
+    emit playbackModeChanged();
+    emit currentTrackChanged();
+    emit errorMessageChanged();
+    emit statusTextChanged();
 }

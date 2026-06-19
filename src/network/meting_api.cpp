@@ -1,8 +1,10 @@
 #include "meting_api.h"
 
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QNetworkRequest>
+#include <QRegularExpression>
 #include <QUrlQuery>
 
 namespace MetingApi {
@@ -49,9 +51,24 @@ bool looksLikeMetingServiceUrl(const QUrl &url)
 QStringList defaultApiBases()
 {
     return {
-        QStringLiteral("https://meting.elysium-stack.cn/api"),
+        QStringLiteral("https://meting-api-omega.vercel.app/api"),
         QStringLiteral("https://api.injahow.cn/meting"),
+        QStringLiteral("https://meting.elysium-stack.cn/api"),
     };
+}
+
+QStringList ensureWorkingApiMirrors(const QStringList &bases)
+{
+    static const QString kPrimaryMirror = QStringLiteral("https://meting-api-omega.vercel.app/api");
+    for (const QString &base : bases) {
+        if (normalizeApiBase(base) == kPrimaryMirror) {
+            return bases;
+        }
+    }
+
+    QStringList upgraded = bases;
+    upgraded.prepend(kPrimaryMirror);
+    return upgraded;
 }
 
 QString apiBase()
@@ -85,7 +102,7 @@ void setApiBases(const QStringList &bases)
         sanitized = defaultApiBases();
     }
 
-    s_apiBases = sanitized;
+    s_apiBases = ensureWorkingApiMirrors(sanitized);
     s_apiBaseIndex = 0;
 }
 
@@ -193,10 +210,59 @@ QVariantMap songToTrackMap(const QJsonObject &song, const QString &server)
     };
 }
 
+QString extractEmbeddedNeteaseId(const QString &text)
+{
+    const QString trimmed = text.trimmed();
+    if (trimmed.isEmpty()) {
+        return QString();
+    }
+
+    if (trimmed.startsWith(QStringLiteral("online:"), Qt::CaseInsensitive)) {
+        const QStringList parts = trimmed.split(QLatin1Char(':'));
+        if (parts.size() >= 3) {
+            const QString id = parts.at(2).trimmed();
+            if (!id.isEmpty() && id.toLongLong() > 0) {
+                return id;
+            }
+        }
+    }
+
+    static const QRegularExpression trailingIdInName(
+        QStringLiteral(" - (\\d{5,})$"));
+    static const QRegularExpression trailingIdBeforeExt(
+        QStringLiteral("-(\\d{5,})\\.(?:mp3|flac|ogg|wav|m4a|aac|wma|opus)$"),
+        QRegularExpression::CaseInsensitiveOption);
+
+    const QRegularExpressionMatch nameMatch = trailingIdInName.match(trimmed);
+    if (nameMatch.hasMatch()) {
+        return nameMatch.captured(1);
+    }
+
+    const QRegularExpressionMatch pathMatch = trailingIdBeforeExt.match(trimmed);
+    if (pathMatch.hasMatch()) {
+        return pathMatch.captured(1);
+    }
+
+    const QString fileName = QFileInfo(trimmed).completeBaseName();
+    if (!fileName.isEmpty() && fileName != trimmed) {
+        return extractEmbeddedNeteaseId(fileName);
+    }
+
+    return QString();
+}
+
 QString buildSearchKeyword(const QString &title, const QString &artist)
 {
-    const QString trimmedTitle = title.trimmed();
+    QString trimmedTitle = title.trimmed();
     const QString trimmedArtist = artist.trimmed();
+
+    const QString embeddedId = extractEmbeddedNeteaseId(trimmedTitle);
+    if (!embeddedId.isEmpty()) {
+        static const QRegularExpression trailingIdInName(QStringLiteral(" - \\d{5,}$"));
+        trimmedTitle.remove(trailingIdInName);
+        trimmedTitle = trimmedTitle.trimmed();
+    }
+
     if (trimmedTitle.isEmpty()) {
         return trimmedArtist;
     }
@@ -207,15 +273,58 @@ QString buildSearchKeyword(const QString &title, const QString &artist)
     return QStringLiteral("%1 %2").arg(trimmedTitle, trimmedArtist);
 }
 
-QString picUrlFromSearchResponse(const QByteArray &jsonData)
+MetingSearchParseResult parseSearchResponse(const QByteArray &jsonData)
 {
+    MetingSearchParseResult result;
+
     QJsonParseError parseError;
     const QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
-    if (parseError.error != QJsonParseError::NoError || !doc.isArray()) {
-        return QString();
+    if (parseError.error != QJsonParseError::NoError) {
+        result.errorMessage = QStringLiteral("JSON 解析失败");
+        result.shouldTryNextMirror = true;
+        return result;
     }
 
-    const QJsonArray array = doc.array();
+    if (doc.isArray()) {
+        result.songs = doc.array();
+        return result;
+    }
+
+    if (!doc.isObject()) {
+        result.errorMessage = QStringLiteral("返回格式异常");
+        result.shouldTryNextMirror = true;
+        return result;
+    }
+
+    const QJsonObject object = doc.object();
+    if (object.contains(QStringLiteral("error"))) {
+        result.errorMessage = object.value(QStringLiteral("error")).toString();
+        if (result.errorMessage.isEmpty()) {
+            result.errorMessage = QStringLiteral("镜像不支持该请求");
+        }
+        result.shouldTryNextMirror = true;
+        return result;
+    }
+
+    const QJsonValue dataValue = object.value(QStringLiteral("data"));
+    if (dataValue.isArray()) {
+        result.songs = dataValue.toArray();
+        return result;
+    }
+
+    const QString message = object.value(QStringLiteral("message")).toString();
+    result.errorMessage = message.isEmpty() ? QStringLiteral("在线请求被拒绝") : message;
+    result.shouldTryNextMirror = true;
+    return result;
+}
+
+QString picUrlFromSearchResponse(const QByteArray &jsonData)
+{
+    const MetingSearchParseResult parsed = parseSearchResponse(jsonData);
+    const QJsonArray array = parsed.songs;
+    if (array.isEmpty()) {
+        return QString();
+    }
     for (const QJsonValue &value : array) {
         if (!value.isObject()) {
             continue;

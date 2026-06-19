@@ -12,6 +12,10 @@ class SettingsService : public QObject
     Q_PROPERTY(QString defaultScanDirectory READ defaultScanDirectory WRITE setDefaultScanDirectory NOTIFY defaultScanDirectoryChanged)
     Q_PROPERTY(QString defaultDownloadDirectory READ defaultDownloadDirectory WRITE setDefaultDownloadDirectory NOTIFY defaultDownloadDirectoryChanged)
     Q_PROPERTY(bool lyricOnlineEnabled READ lyricOnlineEnabled WRITE setLyricOnlineEnabled NOTIFY lyricOnlineEnabledChanged)
+    Q_PROPERTY(bool spectrumEnabled READ spectrumEnabled WRITE setSpectrumEnabled NOTIFY spectrumEnabledChanged)
+    Q_PROPERTY(int spectrumFps READ spectrumFps WRITE setSpectrumFps NOTIFY spectrumFpsChanged)
+    Q_PROPERTY(QString spectrumStyle READ spectrumStyle WRITE setSpectrumStyle NOTIFY spectrumStyleChanged)
+    Q_PROPERTY(qreal spectrumOpacity READ spectrumOpacity WRITE setSpectrumOpacity NOTIFY spectrumOpacityChanged)
     Q_PROPERTY(QString metingApiBases READ metingApiBases WRITE setMetingApiBases NOTIFY metingApiBasesChanged)
     Q_PROPERTY(QString storageLocation READ storageLocation CONSTANT)
     Q_PROPERTY(QString appDataLocation READ appDataLocation CONSTANT)
@@ -34,6 +38,18 @@ public:
     bool lyricOnlineEnabled() const;
     void setLyricOnlineEnabled(bool enabled);
 
+    bool spectrumEnabled() const;
+    void setSpectrumEnabled(bool enabled);
+
+    int spectrumFps() const;
+    void setSpectrumFps(int fps);
+
+    QString spectrumStyle() const;
+    void setSpectrumStyle(const QString &style);
+
+    qreal spectrumOpacity() const;
+    void setSpectrumOpacity(qreal opacity);
+
     QString metingApiBases() const;
     void setMetingApiBases(const QString &basesText);
 
@@ -50,6 +66,10 @@ signals:
     void defaultScanDirectoryChanged();
     void defaultDownloadDirectoryChanged();
     void lyricOnlineEnabledChanged();
+    void spectrumEnabledChanged();
+    void spectrumFpsChanged();
+    void spectrumStyleChanged();
+    void spectrumOpacityChanged();
     void metingApiBasesChanged();
 
 private:
@@ -65,5 +85,9 @@ private:
     QString m_defaultScanDirectory;
     QString m_defaultDownloadDirectory;
     bool m_lyricOnlineEnabled = true;
+    bool m_spectrumEnabled = true;
+    int m_spectrumFps = 30;
+    QString m_spectrumStyle;
+    qreal m_spectrumOpacity = 0.58;
     QString m_metingApiBases;
 };

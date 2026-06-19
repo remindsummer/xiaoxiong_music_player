@@ -54,14 +54,18 @@ Rectangle {
         root.currentAudioFilePath = trackKey
 
         // 优先：同名 .lrc → 本地缓存 → 在线 Meting
-        if (root.lyrics.loadLyricsForTrack(trackKey, trackKey)) {
+        if (root.lyrics.loadLyricsForTrack(trackKey, trackKey,
+                                           root.playback.currentOnlineServer,
+                                           root.playback.currentOnlineId,
+                                           root.playback.currentTrackTitle,
+                                           root.playback.currentTrackArtist)) {
             return
         }
 
         let title = ""
         let artist = ""
         const trackName = root.playback.currentTrackName || ""
-        if (trackName !== "" && trackName !== "未选择歌曲") {
+        if (trackName !== "" && trackName !== qsTr("未选择歌曲")) {
             const splitIndex = trackName.indexOf(" - ")
             if (splitIndex > 0) {
                 title = trackName.substring(0, splitIndex)
@@ -106,9 +110,9 @@ Rectangle {
 
     FileDialog {
         id: openFileDialog
-        title: "选择音频文件"
+        title: qsTr("选择音频文件")
         fileMode: FileDialog.OpenFile
-        nameFilters: ["音频文件 (*.mp3 *.wav *.flac *.aac *.m4a *.ogg)", "所有文件 (*)"]
+        nameFilters: [qsTr("音频文件 (*.mp3 *.wav *.flac *.aac *.m4a *.ogg)"), qsTr("所有文件 (*)")]
         onAccepted: {
             if (root.playback && selectedFile.toString() !== "") {
                 const localPath = root.normalizeLocalPath(selectedFile.toString())
@@ -125,9 +129,9 @@ Rectangle {
 
     FileDialog {
         id: selectLyricDialog
-        title: "选择歌词文件"
+        title: qsTr("选择歌词文件")
         fileMode: FileDialog.OpenFile
-        nameFilters: ["歌词文件 (*.lrc)", "所有文件 (*)"]
+        nameFilters: [qsTr("歌词文件 (*.lrc *.txt)"), qsTr("所有文件 (*)")]
         onAccepted: {
             if (root.lyrics && selectedFile.toString() !== "") {
                 const localPath = root.normalizeLocalPath(selectedFile.toString())
@@ -159,7 +163,7 @@ Rectangle {
         spacing: theme.space3
 
         Label {
-            text: "正在播放"
+            text: qsTr("正在播放")
             font.bold: true
             font.family: theme.fontFamily
             font.pixelSize: theme.fontH1
@@ -179,7 +183,7 @@ Rectangle {
                 spacing: theme.space2
 
                 Label {
-                    text: root.playback ? root.playback.currentTrackName : "未注入 playback"
+                    text: root.playback ? root.playback.currentTrackName : qsTr("未注入 playback")
                     font.family: theme.fontFamily
                     font.pixelSize: theme.fontH2
                     font.weight: 600
@@ -189,7 +193,7 @@ Rectangle {
                 }
 
                 Label {
-                    text: root.playback ? root.playback.statusText : "待机"
+                    text: root.playback ? root.playback.statusText : qsTr("待机")
                     color: theme.colorTextSecondary
                     font.family: theme.fontFamily
                     font.pixelSize: theme.fontBody
@@ -212,7 +216,7 @@ Rectangle {
                     spacing: theme.space2
 
                     Button {
-                        text: "打开文件"
+                        text: qsTr("打开文件")
                         hoverEnabled: true
                         onClicked: openFileDialog.open()
                         background: Rectangle {
@@ -224,7 +228,7 @@ Rectangle {
                     }
 
                     Button {
-                        text: "自动加载本地歌词"
+                        text: qsTr("自动加载本地歌词")
                         enabled: !!root.lyrics && root.currentAudioFilePath !== ""
                         hoverEnabled: true
                         onClicked: root.tryLoadLyricsForCurrentAudio()
@@ -239,7 +243,7 @@ Rectangle {
                     }
 
                     Button {
-                        text: "选择歌词文件"
+                        text: qsTr("选择歌词文件")
                         enabled: !!root.lyrics
                         hoverEnabled: true
                         onClicked: selectLyricDialog.open()
@@ -254,7 +258,7 @@ Rectangle {
                     }
 
                     Button {
-                        text: root.lyrics && root.lyrics.onlineFetchState === "searching" ? "检索中..." : "手动重试在线检索"
+                        text: root.lyrics && root.lyrics.onlineFetchState === "searching" ? qsTr("检索中...") : qsTr("手动重试在线检索")
                         enabled: !!root.lyrics && (!root.playback || root.playback.currentTrackName !== "") && (root.lyrics.onlineFetchState !== "searching")
                         hoverEnabled: true
                         onClicked: root.retryOnlineLyrics()
@@ -284,7 +288,9 @@ Rectangle {
                         color: theme.colorTextMuted
                         font.family: theme.fontFamily
                         font.pixelSize: theme.fontCaption
-                        text: root.lyrics && root.lyrics.lyricFilePath !== "" ? "当前歌词: " + root.lyrics.lyricFilePath : "当前歌词: 未加载"
+                        text: root.lyrics && root.lyrics.lyricFilePath !== ""
+                              ? qsTr("当前歌词: %1").arg(root.lyrics.lyricFilePath)
+                              : qsTr("当前歌词: 未加载")
                     }
                 }
             }
@@ -296,7 +302,10 @@ Rectangle {
             appController: root.appController
             onRetryRequested: root.retryOnlineLyrics()
             onSelectLocalLyricRequested: selectLyricDialog.open()
-            onLineActivated: {
+            onLineActivated: (timestampMs) => {
+                if (root.lyrics && !root.lyrics.lyricsSynced) {
+                    return
+                }
                 if (root.playback) {
                     root.playback.setPosition(timestampMs)
                 }

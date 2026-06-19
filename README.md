@@ -166,8 +166,9 @@ cmake --build build
   "defaultDownloadDirectory": "C:/Users/you/Music/Downloads",
   "lyricOnlineEnabled": true,
   "metingApiBases": [
-    "https://meting.elysium-stack.cn/api",
-    "https://api.injahow.cn/meting"
+    "https://meting-api-omega.vercel.app/api",
+    "https://api.injahow.cn/meting",
+    "https://meting.elysium-stack.cn/api"
   ]
 }
 ```

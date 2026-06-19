@@ -4,6 +4,7 @@
 #include "../network/meting_api.h"
 
 #include <QBuffer>
+#include <QFileInfo>
 #include <QImage>
 #include <QMediaMetaData>
 #include <QMediaPlayer>
@@ -15,6 +16,17 @@
 
 namespace {
 constexpr int kPerItemTimeoutMs = 8000;
+
+bool pathsReferToSameTrack(const QString &left, const QString &right)
+{
+    if (left == right) {
+        return true;
+    }
+    if (left.startsWith(QStringLiteral("online:")) || right.startsWith(QStringLiteral("online:"))) {
+        return left == right;
+    }
+    return QFileInfo(left).absoluteFilePath() == QFileInfo(right).absoluteFilePath();
+}
 } // namespace
 
 LibraryCoverPrefetcher::LibraryCoverPrefetcher(QObject *parent)
@@ -60,6 +72,40 @@ LibraryCoverPrefetcher::LibraryCoverPrefetcher(QObject *parent)
 void LibraryCoverPrefetcher::setCoverArtService(CoverArtService *coverArt)
 {
     m_coverArt = coverArt;
+}
+
+void LibraryCoverPrefetcher::fetchNow(const QString &path, const QString &title, const QString &artist)
+{
+    const QString normalizedPath = path.trimmed();
+    if (normalizedPath.isEmpty()) {
+        emit fetchFinished(normalizedPath, false, QStringLiteral("无效的歌曲路径"));
+        return;
+    }
+
+    if (m_coverArt && !m_coverArt->cachedCoverPath(normalizedPath).isEmpty()) {
+        emit fetchFinished(normalizedPath, true, QString());
+        return;
+    }
+
+    cancelInFlight();
+    m_manualFetch = true;
+    m_busy = true;
+    m_current = PendingItem{normalizedPath, title.trimmed(), artist.trimmed()};
+    startEmbeddedLookup();
+}
+
+void LibraryCoverPrefetcher::cancelInFlight()
+{
+    m_awaitingLoad = false;
+    m_timeout->stop();
+
+    if (m_metingReply) {
+        m_metingReply->abort();
+        m_metingReply->deleteLater();
+        m_metingReply = nullptr;
+    }
+
+    m_player->setSource(QUrl());
 }
 
 void LibraryCoverPrefetcher::enqueue(const QString &path, const QString &title, const QString &artist)
@@ -182,12 +228,51 @@ void LibraryCoverPrefetcher::finishEmbeddedLookup()
     startMetingLookup();
 }
 
+void LibraryCoverPrefetcher::requestCoverThenContinue(const QString &picUrl,
+                                                      const QString &server,
+                                                      const QString &onlineId)
+{
+    if (!m_coverArt) {
+        finishCurrent();
+        return;
+    }
+
+    const QString trackPath = m_current.path;
+    if (!m_manualFetch) {
+        m_coverArt->requestCover(trackPath, picUrl, server, onlineId);
+        finishCurrent();
+        return;
+    }
+
+    auto *connection = new QMetaObject::Connection();
+    *connection = connect(
+        m_coverArt,
+        &CoverArtService::coverReady,
+        this,
+        [this, connection, trackPath](const QString &key, const QString &coverPath) {
+            if (!pathsReferToSameTrack(key, trackPath)) {
+                return;
+            }
+            disconnect(*connection);
+            delete connection;
+            finishManualFetch(!coverPath.isEmpty(),
+                              coverPath.isEmpty() ? QStringLiteral("下载封面失败") : QString());
+        });
+    m_coverArt->requestCover(trackPath, picUrl, server, onlineId);
+}
+
 void LibraryCoverPrefetcher::startMetingLookup()
 {
     m_phase = Phase::WaitingMeting;
 
     if (!m_coverArt) {
         finishCurrent();
+        return;
+    }
+
+    const QString embeddedId = MetingApi::extractEmbeddedNeteaseId(m_current.path);
+    if (!embeddedId.isEmpty()) {
+        requestCoverThenContinue(QString(), QStringLiteral("netease"), embeddedId);
         return;
     }
 
@@ -213,7 +298,9 @@ void LibraryCoverPrefetcher::startMetingLookup()
         if (reply->error() == QNetworkReply::NoError && m_coverArt) {
             const QString picUrl = MetingApi::picUrlFromSearchResponse(reply->readAll());
             if (!picUrl.isEmpty()) {
-                m_coverArt->requestCover(m_current.path, picUrl);
+                requestCoverThenContinue(picUrl, QString(), QString());
+                reply->deleteLater();
+                return;
             }
         }
         reply->deleteLater();
@@ -221,9 +308,36 @@ void LibraryCoverPrefetcher::startMetingLookup()
     });
 }
 
+void LibraryCoverPrefetcher::finishManualFetch(bool success, const QString &message)
+{
+    if (m_coverArt && !m_coverArt->cachedCoverPath(m_current.path).isEmpty()) {
+        success = true;
+    }
+
+    const QString path = m_current.path;
+    emit fetchFinished(path, success, success ? QString() : message);
+
+    m_manualFetch = false;
+    m_busy = false;
+    m_phase = Phase::Idle;
+    m_current = PendingItem{};
+    m_player->setSource(QUrl());
+
+    if (!m_queue.isEmpty()) {
+        processNext();
+    }
+}
+
 void LibraryCoverPrefetcher::finishCurrent()
 {
     m_phase = Phase::Idle;
     m_player->setSource(QUrl());
+
+    if (m_manualFetch) {
+        const bool success = m_coverArt && !m_coverArt->cachedCoverPath(m_current.path).isEmpty();
+        finishManualFetch(success, success ? QString() : QStringLiteral("未找到匹配的封面"));
+        return;
+    }
+
     processNext();
 }

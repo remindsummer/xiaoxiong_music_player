@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../components" as Components
 import "../theme" as ThemeTokens
 
 Rectangle {
@@ -35,7 +36,7 @@ Rectangle {
                 return playlistItems[i].name
             }
         }
-        return "未选择"
+        return qsTr("未选择")
     }
 
     function refreshPlaylistItems() {
@@ -86,7 +87,7 @@ Rectangle {
 
     Dialog {
         id: deletePlaylistDialog
-        title: "确认删除"
+        title: qsTr("确认删除")
         modal: true
         standardButtons: Dialog.Ok | Dialog.Cancel
         visible: false
@@ -103,7 +104,7 @@ Rectangle {
         onRejected: pendingDeletePlaylistId = ""
 
         contentItem: Label {
-            text: "删除后不可恢复，确认继续吗？"
+            text: qsTr("删除后不可恢复，确认继续吗？")
             color: theme.colorTextSecondary
             font.family: theme.fontFamily
             font.pixelSize: theme.fontBody
@@ -130,7 +131,7 @@ Rectangle {
         spacing: theme.space3
 
         Label {
-            text: "播放列表"
+            text: qsTr("播放列表")
             font.bold: true
             font.family: theme.fontFamily
             font.pixelSize: theme.fontH1
@@ -138,7 +139,7 @@ Rectangle {
         }
 
         Label {
-            text: "状态: " + root.appController.healthCheck()
+            text: qsTr("状态: %1").arg(root.appController.healthCheck())
             color: theme.colorTextMuted
             font.family: theme.fontFamily
             font.pixelSize: theme.fontCaption
@@ -161,7 +162,7 @@ Rectangle {
                     anchors.fill: parent
                     anchors.leftMargin: theme.space3
                     anchors.rightMargin: theme.space3
-                    placeholderText: "输入歌单名"
+                    placeholderText: qsTr("输入歌单名")
                     font.family: theme.fontFamily
                     font.pixelSize: theme.fontBody
                     color: theme.colorTextPrimary
@@ -170,7 +171,7 @@ Rectangle {
             }
 
             Button {
-                text: "新建"
+                text: qsTr("新建")
                 enabled: !!playlistService
                 hoverEnabled: true
                 font.family: theme.fontFamily
@@ -212,20 +213,18 @@ Rectangle {
             Layout.fillHeight: true
             spacing: theme.space3
 
-            Rectangle {
+            Components.GlassPanel {
                 Layout.preferredWidth: 280
                 Layout.fillHeight: true
-                radius: theme.radiusMd
-                color: theme.colorBgPanel
-                border.color: theme.colorBorderDefault
+                cornerRadius: theme.radiusMd
+                padding: theme.space3
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: theme.space3
                     spacing: theme.space2
 
                     Label {
-                        text: "歌单列表（" + root.playlistItems.length + "）"
+                        text: qsTr("歌单列表（%1）").arg(root.playlistItems.length)
                         font.bold: true
                         font.family: theme.fontFamily
                         font.pixelSize: theme.fontBody
@@ -328,7 +327,7 @@ Rectangle {
 
                     Button {
                         Layout.fillWidth: true
-                        text: "删除当前歌单"
+                        text: qsTr("删除当前歌单")
                         enabled: !!playlistService && root.selectedPlaylistId.length > 0
                         hoverEnabled: true
                         onClicked: {
@@ -356,16 +355,14 @@ Rectangle {
                 }
             }
 
-            Rectangle {
+            Components.GlassPanel {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                radius: theme.radiusMd
-                color: theme.colorBgPanel
-                border.color: theme.colorBorderDefault
+                cornerRadius: theme.radiusMd
+                padding: theme.space3
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: theme.space3
                     spacing: theme.space2
 
                     RowLayout {
@@ -374,7 +371,7 @@ Rectangle {
 
                         Label {
                             Layout.fillWidth: true
-                            text: "当前歌单: " + root.currentPlaylistName()
+                            text: qsTr("当前歌单: %1").arg(root.currentPlaylistName())
                             font.bold: true
                             font.family: theme.fontFamily
                             font.pixelSize: theme.fontBody
@@ -383,7 +380,7 @@ Rectangle {
                         }
 
                         Button {
-                            text: "播放全部"
+                            text: qsTr("播放全部")
                             enabled: !!playback && root.trackItems.length > 0
                             hoverEnabled: true
                             font.family: theme.fontFamily
@@ -415,7 +412,7 @@ Rectangle {
                     }
 
                     Label {
-                        text: "提示：在「曲库」中悬停歌曲，点击「添加到歌单」按钮加入；双击下方曲目插入下一首播放。"
+                        text: qsTr("提示：在「曲库」中悬停歌曲，点击「添加到歌单」按钮加入；双击下方曲目插入下一首播放。")
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         color: theme.colorTextMuted
@@ -479,7 +476,7 @@ Rectangle {
 
                                 Label {
                                     Layout.fillWidth: true
-                                    text: (plTrackDelegate.modelData.title || "未知标题") + "  |  " + (plTrackDelegate.modelData.path || "")
+                                    text: (plTrackDelegate.modelData.title || qsTr("未知标题")) + "  |  " + (plTrackDelegate.modelData.path || "")
                                     color: plTrackDelegate.isPlaying ? theme.colorPrimaryActive : theme.colorTextPrimary
                                     font.family: theme.fontFamily
                                     font.pixelSize: theme.fontBody
@@ -487,7 +484,7 @@ Rectangle {
                                 }
 
                                 Button {
-                                    text: "移除"
+                                    text: qsTr("移除")
                                     hoverEnabled: true
                                     onClicked: {
                                         if (playlistService.removeTrack(root.selectedPlaylistId, plTrackDelegate.modelData.path)) {

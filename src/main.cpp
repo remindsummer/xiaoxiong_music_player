@@ -8,22 +8,27 @@
 
 #include "ui_bridge/application_controller.h"
 #include "player/playback_service.h"
+#include "settings/settings_service.h"
+#include "i18n/ui_translation_service.h"
 
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
 
-    // 设置组织/应用名，使 QStandardPaths（settings.json、曲库/歌单持久化）
-    // 落到稳定且唯一的本地目录。
     QCoreApplication::setOrganizationName(QStringLiteral("Xiaoxiong"));
     QCoreApplication::setApplicationName(QStringLiteral("XiaoxiongMusicPlayer"));
 
-    // 本项目大量使用 Button 的 background/contentItem 自定义，
-    // 而 Windows 原生样式不支持这些自定义。改用 Basic 样式使其生效。
     QQuickStyle::setStyle(QStringLiteral("Basic"));
 
     QQmlApplicationEngine engine;
     ApplicationController controller;
+    UiTranslationService translationService(&app, &engine);
+    controller.setUiTranslationService(&translationService);
+
+    if (SettingsService *settings = qobject_cast<SettingsService *>(controller.settingsService())) {
+        translationService.applyLanguage(settings->language());
+    }
+
     engine.rootContext()->setContextProperty(QStringLiteral("appController"), &controller);
     QObject::connect(&engine, &QQmlApplicationEngine::warnings, &app, [](const QList<QQmlError> &warnings) {
         for (const QQmlError &warning : warnings) {

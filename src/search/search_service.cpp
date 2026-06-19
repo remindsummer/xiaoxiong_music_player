@@ -201,24 +201,19 @@ void SearchService::handleOnlineSearchReply(QNetworkReply *reply)
     }
 
     const QByteArray data = reply->readAll();
-    QJsonParseError parseError;
-    const QJsonDocument doc = QJsonDocument::fromJson(data, &parseError);
-    if (parseError.error != QJsonParseError::NoError) {
-        setOnlineSearchState(OnlineSearchState::Failed);
-        setOnlineLastError(QStringLiteral("在线搜歌返回数据异常"));
-        return;
-    }
-
-    if (!doc.isArray()) {
-        if (doc.isObject()) {
-            const QJsonObject obj = doc.object();
-            const QString message = obj.value(QStringLiteral("message")).toString();
-            setOnlineSearchState(OnlineSearchState::Failed);
-            setOnlineLastError(message.isEmpty() ? QStringLiteral("在线搜歌请求被拒绝") : message);
+    const MetingApi::MetingSearchParseResult parsed = MetingApi::parseSearchResponse(data);
+    if (parsed.shouldTryNextMirror) {
+        if (MetingApi::tryNextApiBase()) {
+            searchOnline(m_pendingSearchKeyword, m_pendingSearchServer);
             return;
         }
+    }
+
+    if (parsed.songs.isEmpty()) {
         setOnlineSearchState(OnlineSearchState::Failed);
-        setOnlineLastError(QStringLiteral("在线搜歌返回格式异常"));
+        setOnlineLastError(parsed.errorMessage.isEmpty()
+                               ? QStringLiteral("在线搜歌返回格式异常")
+                               : parsed.errorMessage);
         return;
     }
 
@@ -227,7 +222,7 @@ void SearchService::handleOnlineSearchReply(QNetworkReply *reply)
     const QString safeServer = server.isEmpty() ? QStringLiteral("netease") : server;
 
     QVariantList results;
-    const QJsonArray array = doc.array();
+    const QJsonArray array = parsed.songs;
     results.reserve(array.size());
     for (const QJsonValue &value : array) {
         if (!value.isObject()) {

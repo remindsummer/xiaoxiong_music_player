@@ -25,8 +25,8 @@ Rectangle {
 
     Layout.fillWidth: true
     radius: theme.radiusLg
-    color: theme.colorBgElevated
-    border.color: theme.colorBorderDefault
+    color: theme.surfaceGlass
+    border.color: theme.surfaceGlassBorder
     border.width: 1
     implicitHeight: 118
 
@@ -34,7 +34,7 @@ Rectangle {
         id: theme
     }
 
-    readonly property bool isPlaying: !!root.playback && root.playback.playbackStateText === "播放中"
+    readonly property bool isPlaying: root.playback && root.playback.isPlaying
     readonly property bool hasCurrentTrack: !!root.playback && (root.playback.currentPath || "") !== ""
     readonly property int modeIndex: root.playback ? root.playback.playbackMode : 0
     readonly property int volumeValue: root.playback ? root.playback.volume : 80
@@ -143,9 +143,8 @@ Rectangle {
         RoundedCover {
             id: coverBlock
             Layout.preferredWidth: 56
-            Layout.fillHeight: true
-            Layout.maximumHeight: 64
-            cornerRadius: theme.radiusMd
+            Layout.preferredHeight: 56
+            cornerRadius: theme.radiusSm
             placeholderColor: theme.colorPrimary
             opacity: root.hasCurrentTrack ? 1 : 0.75
             imageSource: {
@@ -162,7 +161,7 @@ Rectangle {
                 hoverEnabled: root.hasCurrentTrack
                 cursorShape: root.hasCurrentTrack ? Qt.PointingHandCursor : Qt.ArrowCursor
                 ToolTip.visible: containsMouse && root.hasCurrentTrack
-                ToolTip.text: root.nowPlayingOverlayVisible ? "关闭歌词" : "查看歌词"
+                ToolTip.text: root.nowPlayingOverlayVisible ? qsTr("关闭歌词") : qsTr("查看歌词")
                 onClicked: root.lyricsRequested()
             }
         }
@@ -225,7 +224,7 @@ Rectangle {
 
                         MarqueeLabel {
                             Layout.fillWidth: true
-                            text: root.playback ? root.playback.currentTrackName : "未选择歌曲"
+                            text: root.playback ? (root.playback.currentTrackTitle || root.playback.currentTrackName) : qsTr("未选择歌曲")
                             color: theme.colorTextPrimary
                             fontFamily: theme.fontFamily
                             fontPixelSize: theme.fontBody
@@ -233,9 +232,16 @@ Rectangle {
                         }
 
                         Label {
-                            text: root.playback
-                                  ? (root.playback.errorMessage !== "" ? root.playback.errorMessage : root.playback.playbackStateText)
-                                  : "待机"
+                            text: {
+                                if (!root.playback) {
+                                    return qsTr("待机")
+                                }
+                                const artist = root.playback.currentTrackArtist || ""
+                                const state = root.playback.errorMessage !== ""
+                                        ? root.playback.errorMessage
+                                        : root.playback.playbackStateText
+                                return artist !== "" ? artist + " · " + state : state
+                            }
                             color: root.playback && root.playback.errorMessage !== "" ? theme.colorStateError : theme.colorTextMuted
                             font.family: theme.fontFamily
                             font.pixelSize: theme.fontCaption
@@ -253,7 +259,7 @@ Rectangle {
                         hoverEnabled: true
                         enabled: root.hasCurrentTrack
                         ToolTip.visible: hovered
-                        ToolTip.text: root.favoriteState ? "取消收藏" : "添加到我喜欢"
+                        ToolTip.text: root.favoriteState ? qsTr("取消收藏") : qsTr("添加到我喜欢")
                         onClicked: root.toggleFavorite()
                         background: Rectangle {
                             radius: width / 2
@@ -274,7 +280,7 @@ Rectangle {
                         enabled: !!root.playback && root.playback.hasPrevious
                         hoverEnabled: true
                         ToolTip.visible: hovered
-                        ToolTip.text: "上一首"
+                        ToolTip.text: qsTr("上一首")
                         onClicked: root.playback.previous()
                         background: Rectangle {
                             radius: width / 2
@@ -314,7 +320,7 @@ Rectangle {
                         enabled: !!root.playback && root.playback.hasNext
                         hoverEnabled: true
                         ToolTip.visible: hovered
-                        ToolTip.text: "下一首"
+                        ToolTip.text: qsTr("下一首")
                         onClicked: root.playback.next()
                         background: Rectangle {
                             radius: width / 2
@@ -331,7 +337,7 @@ Rectangle {
                         enabled: !!root.playback
                         hoverEnabled: true
                         ToolTip.visible: hovered
-                        ToolTip.text: root.playback ? ("播放模式：" + root.playback.playbackModeText) : "播放模式"
+                        ToolTip.text: root.playback ? qsTr("播放模式：%1").arg(root.playback.playbackModeText) : qsTr("播放模式")
                         onClicked: root.playback.cyclePlaybackMode()
                         background: Rectangle {
                             radius: width / 2
@@ -356,7 +362,7 @@ Rectangle {
                         enabled: !!root.playback
                         hoverEnabled: true
                         ToolTip.visible: hovered
-                        ToolTip.text: root.volumeValue > 0 ? "静音" : "取消静音"
+                        ToolTip.text: root.volumeValue > 0 ? qsTr("静音") : qsTr("取消静音")
                         onClicked: root.toggleMute()
                         background: Rectangle {
                             radius: width / 2
@@ -387,7 +393,7 @@ Rectangle {
                         hoverEnabled: true
                         enabled: root.hasCurrentTrack
                         ToolTip.visible: hovered
-                        ToolTip.text: root.nowPlayingOverlayVisible ? "关闭歌词" : "歌词"
+                        ToolTip.text: root.nowPlayingOverlayVisible ? qsTr("关闭歌词") : qsTr("歌词")
                         onClicked: root.lyricsRequested()
                         background: Rectangle {
                             radius: width / 2
@@ -403,7 +409,7 @@ Rectangle {
                         display: AbstractButton.IconOnly
                         hoverEnabled: true
                         ToolTip.visible: hovered
-                        ToolTip.text: "播放列表"
+                        ToolTip.text: qsTr("播放列表")
                         onClicked: root.queueRequested()
                         background: Rectangle {
                             radius: width / 2
