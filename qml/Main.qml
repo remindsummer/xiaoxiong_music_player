@@ -53,6 +53,64 @@ ApplicationWindow {
 
     property bool nowPlayingVisible: false
 
+    readonly property bool trayAvailable: appController
+                                          && appController.trayService
+                                          && appController.trayService.available
+
+    function showMainFromTray() {
+        if (appController && appController.trayService) {
+            appController.trayService.showMainWindow()
+        } else {
+            root.show()
+            root.raise()
+            root.requestActivate()
+        }
+    }
+
+    function hideMainToTray() {
+        if (appController && appController.trayService) {
+            appController.trayService.hideMainWindow()
+        } else {
+            root.hide()
+        }
+    }
+
+    function handleCloseChoice(toTray, remember) {
+        if (remember && appController && appController.settings) {
+            appController.settings.closeBehavior = toTray ? "tray" : "quit"
+            appController.settings.save()
+        }
+        if (toTray) {
+            root.hideMainToTray()
+        } else {
+            Qt.quit()
+        }
+    }
+
+    Component.onCompleted: {
+        if (appController && appController.trayService) {
+            appController.trayService.setWindow(root)
+        }
+    }
+
+    onClosing: function(close) {
+        if (!root.trayAvailable) {
+            close.accepted = true
+            return
+        }
+
+        close.accepted = false
+        const settings = appController ? appController.settings : null
+        const behavior = settings ? settings.closeBehavior : "ask"
+        if (behavior === "tray") {
+            root.hideMainToTray()
+        } else if (behavior === "quit") {
+            close.accepted = true
+        } else {
+            closeChoiceDialog.open()
+        }
+    }
+
 
 
     ThemeTokens.Theme {
@@ -476,6 +534,58 @@ ApplicationWindow {
     }
 
 
+
+    Dialog {
+        id: closeChoiceDialog
+        anchors.centerIn: parent
+        modal: true
+        title: qsTr("关闭窗口")
+        standardButtons: Dialog.NoButton
+        padding: theme.space4
+
+        contentItem: ColumnLayout {
+            spacing: theme.space3
+
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                text: qsTr("是否最小化到系统托盘并继续后台播放？")
+                color: theme.colorTextPrimary
+                font.family: theme.fontFamily
+                font.pixelSize: theme.fontBody
+            }
+
+            CheckBox {
+                id: rememberCloseChoice
+                text: qsTr("记住我的选择")
+                font.family: theme.fontFamily
+                font.pixelSize: theme.fontCaption
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: theme.space2
+
+                Item { Layout.fillWidth: true }
+
+                Button {
+                    text: qsTr("最小化到托盘")
+                    onClicked: {
+                        closeChoiceDialog.close()
+                        root.handleCloseChoice(true, rememberCloseChoice.checked)
+                    }
+                }
+
+                Button {
+                    text: qsTr("退出")
+                    onClicked: {
+                        closeChoiceDialog.close()
+                        root.handleCloseChoice(false, rememberCloseChoice.checked)
+                    }
+                }
+            }
+        }
+    }
 
     Drawer {
 

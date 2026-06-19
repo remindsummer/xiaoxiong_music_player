@@ -142,12 +142,27 @@ qreal clampSpectrumOpacity(qreal opacity)
     return qBound(0.15, opacity, 1.0);
 }
 
+QString normalizeCloseBehavior(const QString &behavior)
+{
+    const QString trimmed = behavior.trimmed();
+    if (trimmed == QStringLiteral("tray") || trimmed == QStringLiteral("quit")) {
+        return trimmed;
+    }
+    return QStringLiteral("ask");
+}
+
+QString defaultCloseBehavior()
+{
+    return QStringLiteral("ask");
+}
+
 } // namespace
 
 SettingsService::SettingsService(QObject *parent)
     : QObject(parent)
     , m_spectrumStyle(defaultSpectrumStyle())
     , m_spectrumOpacity(defaultSpectrumOpacity())
+    , m_closeBehavior(defaultCloseBehavior())
 {
     load();
 }
@@ -300,6 +315,22 @@ void SettingsService::setMetingApiBases(const QString &basesText)
     emit metingApiBasesChanged();
 }
 
+QString SettingsService::closeBehavior() const
+{
+    return m_closeBehavior;
+}
+
+void SettingsService::setCloseBehavior(const QString &behavior)
+{
+    const QString normalized = normalizeCloseBehavior(behavior);
+    if (m_closeBehavior == normalized) {
+        return;
+    }
+
+    m_closeBehavior = normalized;
+    emit closeBehaviorChanged();
+}
+
 QString SettingsService::storageLocation() const
 {
     return settingsFilePath();
@@ -328,6 +359,7 @@ void SettingsService::applyDefaults()
     setSpectrumStyle(defaultSpectrumStyle());
     setSpectrumOpacity(defaultSpectrumOpacity());
     setMetingApiBases(defaultMetingApiBasesValue());
+    setCloseBehavior(defaultCloseBehavior());
 }
 
 bool SettingsService::loadFromJsonObject(const QJsonObject &object)
@@ -350,6 +382,7 @@ bool SettingsService::loadFromJsonObject(const QJsonObject &object)
     setSpectrumOpacity(clampSpectrumOpacity(
         object.value(QStringLiteral("spectrumOpacity")).toDouble(defaultSpectrumOpacity())));
     setMetingApiBases(metingApiBasesTextFromJsonValue(object.value(QStringLiteral("metingApiBases"))));
+    setCloseBehavior(object.value(QStringLiteral("closeBehavior")).toString(defaultCloseBehavior()));
     return true;
 }
 
@@ -371,6 +404,7 @@ QJsonObject SettingsService::toJsonObject() const
     object.insert(QStringLiteral("spectrumStyle"), m_spectrumStyle);
     object.insert(QStringLiteral("spectrumOpacity"), m_spectrumOpacity);
     object.insert(QStringLiteral("metingApiBases"), metingArray);
+    object.insert(QStringLiteral("closeBehavior"), m_closeBehavior);
     return object;
 }
 

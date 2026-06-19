@@ -1,5 +1,5 @@
 #include <QCoreApplication>
-#include <QGuiApplication>
+#include <QApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlError>
 #include <QQmlContext>
@@ -13,7 +13,8 @@
 
 int main(int argc, char *argv[])
 {
-    QGuiApplication app(argc, argv);
+    QApplication app(argc, argv);
+    QGuiApplication::setQuitOnLastWindowClosed(false);
 
     QCoreApplication::setOrganizationName(QStringLiteral("Xiaoxiong"));
     QCoreApplication::setApplicationName(QStringLiteral("XiaoxiongMusicPlayer"));
@@ -45,7 +46,7 @@ int main(int argc, char *argv[])
     if (engine.rootObjects().isEmpty())
         return -1;
 
-    QObject::connect(&app, &QGuiApplication::aboutToQuit, &controller, [&controller]() {
+    QObject::connect(&app, &QCoreApplication::aboutToQuit, &controller, [&controller]() {
         if (PlaybackService *playback = qobject_cast<PlaybackService *>(controller.playbackService())) {
             playback->saveSession();
         }

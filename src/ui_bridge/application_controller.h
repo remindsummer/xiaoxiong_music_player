@@ -14,6 +14,7 @@ class LibraryCoverPrefetcher;
 class OnlineDownloadService;
 class AudioVisualizerService;
 class UiTranslationService;
+class TrayService;
 
 class ApplicationController : public QObject
 {
@@ -34,6 +35,7 @@ class ApplicationController : public QObject
     Q_PROPERTY(QObject* lyricsService READ lyricsService CONSTANT)
     Q_PROPERTY(QObject* settingsService READ settingsService CONSTANT)
     Q_PROPERTY(QObject* audioVisualizer READ audioVisualizer CONSTANT)
+    Q_PROPERTY(QObject* trayService READ trayService CONSTANT)
 
 public:
     explicit ApplicationController(QObject *parent = nullptr);
@@ -55,6 +57,7 @@ public:
     QObject* lyricsService() const;
     QObject* settingsService() const;
     QObject* audioVisualizer() const;
+    QObject* trayService() const;
 
     int uiLanguageRevision() const;
     void setUiTranslationService(UiTranslationService *translationService);
@@ -78,5 +81,6 @@ private:
     OnlineDownloadService *m_downloadService = nullptr;
     AudioVisualizerService *m_audioVisualizerService = nullptr;
     UiTranslationService *m_translationService = nullptr;
+    TrayService *m_trayService = nullptr;
     int m_uiLanguageRevision = 0;
 };

@@ -55,6 +55,7 @@ Rectangle {
         spectrumOpacityValueLabel.text = Math.round(root.settings.spectrumOpacity * 100) + "%"
         syncSpectrumStyleRadios()
         metingApiBasesField.text = root.settings.metingApiBases
+        closeBehaviorCombo.syncFromSettings()
     }
 
     ColumnLayout {
@@ -156,6 +157,46 @@ Rectangle {
                         font.family: theme.fontFamily
                         font.pixelSize: theme.fontBody
                         color: theme.colorTextPrimary
+                    }
+                    Label {
+                        text: qsTr("关闭主窗口时")
+                        color: theme.colorTextSecondary
+                        font.family: theme.fontFamily
+                        font.pixelSize: theme.fontCaption
+                    }
+                    ComboBox {
+                        id: closeBehaviorCombo
+                        Layout.fillWidth: true
+                        enabled: root.appController && root.appController.trayService
+                                   ? root.appController.trayService.available
+                                   : false
+                        model: [
+                            { label: qsTr("每次询问"), value: "ask" },
+                            { label: qsTr("最小化到托盘（后台播放）"), value: "tray" },
+                            { label: qsTr("退出程序"), value: "quit" }
+                        ]
+                        textRole: "label"
+
+                        function syncFromSettings() {
+                            if (!root.settingsReady) {
+                                return
+                            }
+                            const currentBehavior = root.settings.closeBehavior
+                            for (let i = 0; i < model.length; ++i) {
+                                if (model[i].value === currentBehavior) {
+                                    currentIndex = i
+                                    return
+                                }
+                            }
+                            currentIndex = 0
+                        }
+
+                        Component.onCompleted: syncFromSettings()
+                        onActivated: {
+                            if (root.settingsReady) {
+                                root.settings.closeBehavior = model[currentIndex].value
+                            }
+                        }
                     }
                     Label {
                         text: qsTr("界面语言")
@@ -642,5 +683,6 @@ Rectangle {
             spectrumOpacityValueLabel.text = Math.round(root.settings.spectrumOpacity * 100) + "%"
         }
         function onMetingApiBasesChanged() { metingApiBasesField.text = root.settings.metingApiBases }
+        function onCloseBehaviorChanged() { closeBehaviorCombo.syncFromSettings() }
     }
 }

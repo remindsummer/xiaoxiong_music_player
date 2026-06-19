@@ -11,6 +11,7 @@
 #include "../playlist/playlist_service.h"
 #include "../search/search_service.h"
 #include "../i18n/ui_translation_service.h"
+#include "../app/tray_service.h"
 #include "../settings/settings_service.h"
 
 ApplicationController::ApplicationController(QObject *parent)
@@ -26,6 +27,7 @@ ApplicationController::ApplicationController(QObject *parent)
     , m_coverPrefetcher(new LibraryCoverPrefetcher(this))
     , m_downloadService(new OnlineDownloadService(this))
     , m_audioVisualizerService(new AudioVisualizerService(this))
+    , m_trayService(new TrayService(this))
 {
     m_playbackService->setCoverArtService(m_coverArtService);
     m_playbackService->setCoverPrefetcher(m_coverPrefetcher);
@@ -46,6 +48,7 @@ ApplicationController::ApplicationController(QObject *parent)
     });
 
     m_playbackService->restoreSession();
+    m_trayService->initialize();
 }
 
 ApplicationController::~ApplicationController()
@@ -163,4 +166,9 @@ QObject *ApplicationController::settingsService() const
 QObject *ApplicationController::audioVisualizer() const
 {
     return m_audioVisualizerService;
+}
+
+QObject *ApplicationController::trayService() const
+{
+    return m_trayService;
 }

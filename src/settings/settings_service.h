@@ -17,6 +17,7 @@ class SettingsService : public QObject
     Q_PROPERTY(QString spectrumStyle READ spectrumStyle WRITE setSpectrumStyle NOTIFY spectrumStyleChanged)
     Q_PROPERTY(qreal spectrumOpacity READ spectrumOpacity WRITE setSpectrumOpacity NOTIFY spectrumOpacityChanged)
     Q_PROPERTY(QString metingApiBases READ metingApiBases WRITE setMetingApiBases NOTIFY metingApiBasesChanged)
+    Q_PROPERTY(QString closeBehavior READ closeBehavior WRITE setCloseBehavior NOTIFY closeBehaviorChanged)
     Q_PROPERTY(QString storageLocation READ storageLocation CONSTANT)
     Q_PROPERTY(QString appDataLocation READ appDataLocation CONSTANT)
 
@@ -53,6 +54,9 @@ public:
     QString metingApiBases() const;
     void setMetingApiBases(const QString &basesText);
 
+    QString closeBehavior() const;
+    void setCloseBehavior(const QString &behavior);
+
     QString storageLocation() const;
     QString appDataLocation() const;
 
@@ -71,6 +75,7 @@ signals:
     void spectrumStyleChanged();
     void spectrumOpacityChanged();
     void metingApiBasesChanged();
+    void closeBehaviorChanged();
 
 private:
     QString settingsFilePath() const;
@@ -90,4 +95,5 @@ private:
     QString m_spectrumStyle;
     qreal m_spectrumOpacity = 0.58;
     QString m_metingApiBases;
+    QString m_closeBehavior;
 };

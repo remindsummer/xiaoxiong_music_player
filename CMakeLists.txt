@@ -21,7 +21,7 @@ if(NOT CMAKE_PREFIX_PATH)
 endif()
 message(STATUS "使用的 Qt 路径 (CMAKE_PREFIX_PATH): ${CMAKE_PREFIX_PATH}")
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick QuickControls2 Multimedia Network LinguistTools)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Svg Quick QuickControls2 Multimedia Network LinguistTools)
 
 # 启用 Qt 标准 CMake 行为（AUTOMOC、QML 模块等）
 qt_standard_project_setup()
@@ -35,6 +35,8 @@ qt_add_executable(xxMusic
     src/main.cpp
     src/app/application_bootstrap.cpp
     src/app/application_bootstrap.h
+    src/app/tray_service.cpp
+    src/app/tray_service.h
     src/ui_bridge/application_controller.cpp
     src/ui_bridge/application_controller.h
 
@@ -101,6 +103,7 @@ qt_add_executable(xxMusic
 # Debug 构建使用控制台子系统，便于 qDebug()/std::cout 输出到终端
 set_target_properties(xxMusic PROPERTIES
     WIN32_EXECUTABLE $<NOT:$<CONFIG:Debug>>
+    AUTOUIC OFF
 )
 
 # 将 QML 注册为内嵌模块，运行时通过 qrc:/XiaoxiongMusic/... 加载
@@ -161,6 +164,7 @@ qt_add_qml_module(xxMusic
         assets/icons/lyrics.svg
         assets/icons/queue.svg
         assets/icons/music_note.svg
+        assets/icons/tray_icon.svg
         assets/icons/download.svg
         assets/icons/back.svg
 )
@@ -183,6 +187,8 @@ qt_add_resources(xxMusic "app_translations"
 target_link_libraries(xxMusic PRIVATE
     Qt6::Core
     Qt6::Gui
+    Qt6::Widgets
+    Qt6::Svg
     Qt6::Quick   # QML 界面必需
     Qt6::QuickControls2 # QQuickStyle 设置控件样式
     Qt6::Multimedia
