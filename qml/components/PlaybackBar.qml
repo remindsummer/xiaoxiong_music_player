@@ -14,9 +14,10 @@ Rectangle {
                                            ? (root.appController.playlistService || root.appController.playlist)
                                            : null
 
-    // 由 Main 监听，用于打开歌词浮层。
+    // 由 Main 监听，用于打开/关闭歌词浮层。
     signal lyricsRequested()
     signal queueRequested()
+    property bool nowPlayingOverlayVisible: false
 
     // 静音切换时记忆此前音量。
     property int lastVolume: 80
@@ -222,7 +223,7 @@ Rectangle {
                         cursorShape: Qt.PointingHandCursor
                         hoverEnabled: true
                         ToolTip.visible: containsMouse
-                        ToolTip.text: "查看歌词"
+                        ToolTip.text: root.nowPlayingOverlayVisible ? "关闭歌词" : "查看歌词"
                         onClicked: root.lyricsRequested()
                     }
                 }
@@ -403,7 +404,7 @@ Rectangle {
                     display: AbstractButton.IconOnly
                     hoverEnabled: true
                     ToolTip.visible: hovered
-                    ToolTip.text: "歌词"
+                    ToolTip.text: root.nowPlayingOverlayVisible ? "关闭歌词" : "歌词"
                     onClicked: root.lyricsRequested()
                     background: Rectangle {
                         radius: width / 2

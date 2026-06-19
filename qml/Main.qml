@@ -39,8 +39,8 @@ ApplicationWindow {
         librarySection.focusSearchField()
     }
 
-    function openNowPlaying() {
-        root.nowPlayingVisible = true
+    function toggleNowPlaying() {
+        root.nowPlayingVisible = !root.nowPlayingVisible
     }
 
     Shortcut {
@@ -236,7 +236,8 @@ ApplicationWindow {
             Layout.fillWidth: true
             Layout.preferredHeight: 118
             appController: root.controller
-            onLyricsRequested: root.openNowPlaying()
+            nowPlayingOverlayVisible: root.nowPlayingVisible
+            onLyricsRequested: root.toggleNowPlaying()
             onQueueRequested: queueDrawer.open()
         }
     }
