@@ -12,6 +12,7 @@
 #include "../search/search_service.h"
 #include "../i18n/ui_translation_service.h"
 #include "../app/tray_service.h"
+#include "../player/media_session_integration.h"
 #include "../settings/settings_service.h"
 
 ApplicationController::ApplicationController(QObject *parent)
@@ -28,6 +29,7 @@ ApplicationController::ApplicationController(QObject *parent)
     , m_downloadService(new OnlineDownloadService(this))
     , m_audioVisualizerService(new AudioVisualizerService(this))
     , m_trayService(new TrayService(this))
+    , m_mediaSessionIntegration(MediaSessionIntegration::create(this))
 {
     m_playbackService->setCoverArtService(m_coverArtService);
     m_playbackService->setCoverPrefetcher(m_coverPrefetcher);
@@ -49,6 +51,7 @@ ApplicationController::ApplicationController(QObject *parent)
 
     m_playbackService->restoreSession();
     m_trayService->initialize();
+    m_mediaSessionIntegration->attachToPlayback(m_playbackService);
 }
 
 ApplicationController::~ApplicationController()
@@ -171,4 +174,9 @@ QObject *ApplicationController::audioVisualizer() const
 QObject *ApplicationController::trayService() const
 {
     return m_trayService;
+}
+
+QObject *ApplicationController::mediaSessionIntegration() const
+{
+    return m_mediaSessionIntegration;
 }

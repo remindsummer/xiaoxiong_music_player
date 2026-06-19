@@ -1,5 +1,6 @@
 #include <QCoreApplication>
 #include <QApplication>
+#include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlError>
 #include <QQmlContext>
@@ -11,10 +12,23 @@
 #include "settings/settings_service.h"
 #include "i18n/ui_translation_service.h"
 
+#ifdef Q_OS_WIN
+#include "app/windows_app_identity.h"
+#endif
+
 int main(int argc, char *argv[])
 {
+#ifdef Q_OS_WIN
+    QGuiApplication::setDesktopFileName(QStringLiteral("Xiaoxiong.XiaoxiongMusicPlayer"));
+#endif
+
     QApplication app(argc, argv);
     QGuiApplication::setQuitOnLastWindowClosed(false);
+
+#ifdef Q_OS_WIN
+    WindowsAppIdentity::initializeProcessIdentity();
+    WindowsAppIdentity::ensureShellRegistration();
+#endif
 
     QCoreApplication::setOrganizationName(QStringLiteral("Xiaoxiong"));
     QCoreApplication::setApplicationName(QStringLiteral("XiaoxiongMusicPlayer"));

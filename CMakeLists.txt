@@ -43,6 +43,8 @@ qt_add_executable(xxMusic
     # ===== 播放核心模块 =====
     src/player/playback_service.cpp
     src/player/playback_service.h
+    src/player/media_session_integration.cpp
+    src/player/media_session_integration.h
     src/player/audio_spectrum_analyzer.cpp
     src/player/audio_spectrum_analyzer.h
     src/player/audio_visualizer_service.cpp
@@ -129,6 +131,8 @@ qt_add_qml_module(xxMusic
         qml/components/GlassPanel.qml
         qml/components/PrimaryButton.qml
         qml/components/GhostButton.qml
+        qml/components/CloseChoiceDialog.qml
+        qml/components/ThemedCheckBox.qml
         qml/components/DangerButton.qml
         qml/components/ThemedTextField.qml
         qml/components/ThemedComboBox.qml
@@ -194,6 +198,17 @@ target_link_libraries(xxMusic PRIVATE
     Qt6::Multimedia
     Qt6::Network # 在线歌词（LRCLIB）所需
 )
+
+if(WIN32)
+    target_sources(xxMusic PRIVATE
+        src/app/windows_app_identity.cpp
+        src/app/windows_app_identity.h
+        src/player/windows_media_session_integration.cpp
+        src/player/windows_media_session_integration.h
+        resources/xxmusic.rc
+    )
+    target_link_libraries(xxMusic PRIVATE windowsapp propsys shell32 ole32)
+endif()
 
 # 定位 windeployqt（随 Qt 一起安装，位于 Qt 的 bin 目录）
 # 直接对 exe 调用 windeployqt 会把所有依赖平铺部署到 exe 同目录，

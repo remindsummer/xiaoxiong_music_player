@@ -15,6 +15,7 @@ class OnlineDownloadService;
 class AudioVisualizerService;
 class UiTranslationService;
 class TrayService;
+class MediaSessionIntegration;
 
 class ApplicationController : public QObject
 {
@@ -36,6 +37,7 @@ class ApplicationController : public QObject
     Q_PROPERTY(QObject* settingsService READ settingsService CONSTANT)
     Q_PROPERTY(QObject* audioVisualizer READ audioVisualizer CONSTANT)
     Q_PROPERTY(QObject* trayService READ trayService CONSTANT)
+    Q_PROPERTY(QObject* mediaSessionIntegration READ mediaSessionIntegration CONSTANT)
 
 public:
     explicit ApplicationController(QObject *parent = nullptr);
@@ -58,6 +60,7 @@ public:
     QObject* settingsService() const;
     QObject* audioVisualizer() const;
     QObject* trayService() const;
+    QObject* mediaSessionIntegration() const;
 
     int uiLanguageRevision() const;
     void setUiTranslationService(UiTranslationService *translationService);
@@ -82,5 +85,6 @@ private:
     AudioVisualizerService *m_audioVisualizerService = nullptr;
     UiTranslationService *m_translationService = nullptr;
     TrayService *m_trayService = nullptr;
+    MediaSessionIntegration *m_mediaSessionIntegration = nullptr;
     int m_uiLanguageRevision = 0;
 };

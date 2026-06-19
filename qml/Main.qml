@@ -91,6 +91,9 @@ ApplicationWindow {
         if (appController && appController.trayService) {
             appController.trayService.setWindow(root)
         }
+        if (appController && appController.mediaSessionIntegration) {
+            appController.mediaSessionIntegration.setWindow(root)
+        }
     }
 
     onClosing: function(close) {
@@ -535,55 +538,16 @@ ApplicationWindow {
 
 
 
-    Dialog {
+    Components.CloseChoiceDialog {
         id: closeChoiceDialog
         anchors.centerIn: parent
-        modal: true
-        title: qsTr("关闭窗口")
-        standardButtons: Dialog.NoButton
-        padding: theme.space4
 
-        contentItem: ColumnLayout {
-            spacing: theme.space3
+        onTrayChosen: function(remember) {
+            root.handleCloseChoice(true, remember)
+        }
 
-            Label {
-                Layout.fillWidth: true
-                wrapMode: Text.Wrap
-                text: qsTr("是否最小化到系统托盘并继续后台播放？")
-                color: theme.colorTextPrimary
-                font.family: theme.fontFamily
-                font.pixelSize: theme.fontBody
-            }
-
-            CheckBox {
-                id: rememberCloseChoice
-                text: qsTr("记住我的选择")
-                font.family: theme.fontFamily
-                font.pixelSize: theme.fontCaption
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: theme.space2
-
-                Item { Layout.fillWidth: true }
-
-                Button {
-                    text: qsTr("最小化到托盘")
-                    onClicked: {
-                        closeChoiceDialog.close()
-                        root.handleCloseChoice(true, rememberCloseChoice.checked)
-                    }
-                }
-
-                Button {
-                    text: qsTr("退出")
-                    onClicked: {
-                        closeChoiceDialog.close()
-                        root.handleCloseChoice(false, rememberCloseChoice.checked)
-                    }
-                }
-            }
+        onQuitChosen: function(remember) {
+            root.handleCloseChoice(false, remember)
         }
     }
 
