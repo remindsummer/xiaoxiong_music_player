@@ -35,6 +35,7 @@ Rectangle {
     }
 
     readonly property bool isPlaying: !!root.playback && root.playback.playbackStateText === "播放中"
+    readonly property bool hasCurrentTrack: !!root.playback && (root.playback.currentPath || "") !== ""
     readonly property int modeIndex: root.playback ? root.playback.playbackMode : 0
     readonly property int volumeValue: root.playback ? root.playback.volume : 80
 
@@ -130,301 +131,301 @@ Rectangle {
         }
     }
 
-    ColumnLayout {
+    RowLayout {
         anchors.fill: parent
         anchors.leftMargin: theme.space4
         anchors.rightMargin: theme.space4
         anchors.topMargin: theme.space2
         anchors.bottomMargin: theme.space2
-        spacing: theme.space1
+        spacing: theme.space3
 
-        // ===== 进度条 =====
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: theme.space2
+        // ----- 左：封面（跨进度条 + 控制行两行）-----
+        Rectangle {
+            id: coverBlock
+            Layout.preferredWidth: 56
+            Layout.fillHeight: true
+            Layout.maximumHeight: 64
+            radius: theme.radiusSm
+            color: theme.colorPrimary
+            clip: true
+            opacity: root.hasCurrentTrack ? 1 : 0.75
 
-            Label {
-                text: root.playback ? root.playback.formatTime(root.playback.position) : "0:00"
-                color: theme.colorTextMuted
-                font.family: theme.fontFamily
-                font.pixelSize: theme.fontCaption
-                Layout.preferredWidth: 40
-                horizontalAlignment: Text.AlignRight
-            }
+            Image {
+                id: coverImage
+                anchors.fill: parent
+                source: {
+                    if (root.playback && root.playback.currentCoverPath !== "") {
+                        return root.playback.currentCoverPath
+                    }
+                    return "../../assets/icons/music_note.svg"
+                }
+                fillMode: root.playback && root.playback.currentCoverPath !== ""
+                          ? Image.PreserveAspectCrop
+                          : Image.Pad
+                sourceSize.width: 56
+                sourceSize.height: 56
+                opacity: root.playback && root.playback.currentCoverPath !== "" ? 1 : 0.92
 
-            Slider {
-                id: progressSlider
-                Layout.fillWidth: true
-                from: 0
-                to: root.playback ? Math.max(root.playback.duration, 1) : 1
-                value: root.playback ? root.playback.position : 0
-                enabled: !!root.playback
-                opacity: enabled ? 1 : 0.55
-                onMoved: {
-                    if (root.playback) {
-                        root.playback.setPosition(value)
+                onStatusChanged: {
+                    if (status === Image.Error && root.playback && root.playback.currentCoverPath !== "") {
+                        source = "../../assets/icons/music_note.svg"
                     }
                 }
             }
 
-            Label {
-                text: root.playback ? root.playback.formatTime(root.playback.duration) : "0:00"
-                color: theme.colorTextMuted
-                font.family: theme.fontFamily
-                font.pixelSize: theme.fontCaption
-                Layout.preferredWidth: 40
+            MouseArea {
+                anchors.fill: parent
+                enabled: root.hasCurrentTrack
+                hoverEnabled: root.hasCurrentTrack
+                cursorShape: root.hasCurrentTrack ? Qt.PointingHandCursor : Qt.ArrowCursor
+                ToolTip.visible: containsMouse && root.hasCurrentTrack
+                ToolTip.text: root.nowPlayingOverlayVisible ? "关闭歌词" : "查看歌词"
+                onClicked: root.lyricsRequested()
             }
         }
 
-        // ===== 控制区（左信息 / 中走带 / 右工具）=====
-        RowLayout {
+        ColumnLayout {
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            spacing: theme.space3
+            spacing: theme.space1
 
-            // ----- 左：封面 + 歌名/状态 + 收藏 -----
+            // ----- 第 1 行：进度条（封面右侧，播放按钮上方）-----
             RowLayout {
                 Layout.fillWidth: true
-                Layout.preferredWidth: 100
                 spacing: theme.space2
 
-                Rectangle {
-                    Layout.preferredWidth: 48
-                    Layout.preferredHeight: 48
-                    radius: theme.radiusSm
-                    color: theme.colorPrimary
-                    clip: true
-
-                    Image {
-                        id: coverImage
-                        anchors.fill: parent
-                        source: {
-                            if (root.playback && root.playback.currentCoverPath !== "") {
-                                return root.playback.currentCoverPath
-                            }
-                            return "../../assets/icons/music_note.svg"
-                        }
-                        fillMode: root.playback && root.playback.currentCoverPath !== ""
-                                  ? Image.PreserveAspectCrop
-                                  : Image.Pad
-                        sourceSize.width: 48
-                        sourceSize.height: 48
-                        opacity: root.playback && root.playback.currentCoverPath !== "" ? 1 : 0.92
-
-                        onStatusChanged: {
-                            if (status === Image.Error && root.playback && root.playback.currentCoverPath !== "") {
-                                source = "../../assets/icons/music_note.svg"
-                            }
-                        }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        hoverEnabled: true
-                        ToolTip.visible: containsMouse
-                        ToolTip.text: root.nowPlayingOverlayVisible ? "关闭歌词" : "查看歌词"
-                        onClicked: root.lyricsRequested()
-                    }
-                }
-
-                ColumnLayout {
-                    Layout.fillWidth: false
-                    Layout.maximumWidth: 220
-                    spacing: 2
-
-                    Label {
-                        text: root.playback ? root.playback.currentTrackName : "未选择歌曲"
-                        font.bold: true
-                        font.family: theme.fontFamily
-                        font.pixelSize: theme.fontBody
-                        color: theme.colorTextPrimary
-                        elide: Text.ElideRight
-                        Layout.fillWidth: true
-                        Layout.maximumWidth: 220
-                    }
-
-                    Label {
-                        text: root.playback
-                              ? (root.playback.errorMessage !== "" ? root.playback.errorMessage : root.playback.playbackStateText)
-                              : "待机"
-                        color: root.playback && root.playback.errorMessage !== "" ? theme.colorStateError : theme.colorTextMuted
-                        font.family: theme.fontFamily
-                        font.pixelSize: theme.fontCaption
-                        elide: Text.ElideRight
-                        Layout.fillWidth: true
-                        Layout.maximumWidth: 220
-                    }
-                }
-
-                ToolButton {
-                    icon.source: root.favoriteState ? "../../assets/icons/heart_filled.svg" : "../../assets/icons/heart.svg"
-                    icon.color: root.favoriteState ? theme.colorStateError : theme.colorTextMuted
-                    icon.width: 20
-                    icon.height: 20
-                    display: AbstractButton.IconOnly
-                    hoverEnabled: true
-                    enabled: !!root.playback && (root.playback.currentPath || "") !== ""
-                    ToolTip.visible: hovered
-                    ToolTip.text: root.favoriteState ? "取消收藏" : "添加到我喜欢"
-                    onClicked: root.toggleFavorite()
-                    background: Rectangle {
-                        radius: width / 2
-                        color: parent.down ? theme.colorBgPressed : (parent.hovered ? theme.colorBgHover : "transparent")
-                    }
-                }
-
-                Item { Layout.fillWidth: true }
-            }
-
-            // ----- 中：上一首 / 播放 / 下一首 / 模式 -----
-            RowLayout {
-                Layout.alignment: Qt.AlignHCenter
-                spacing: theme.space2
-
-                ToolButton {
-                    icon.source: "../../assets/icons/prev.svg"
-                    icon.color: enabled ? theme.colorTextSecondary : theme.colorTextMuted
-                    icon.width: 24
-                    icon.height: 24
-                    display: AbstractButton.IconOnly
-                    enabled: !!root.playback && root.playback.hasPrevious
-                    hoverEnabled: true
-                    ToolTip.visible: hovered
-                    ToolTip.text: "上一首"
-                    onClicked: root.playback.previous()
-                    background: Rectangle {
-                        radius: width / 2
-                        color: parent.down ? theme.colorBgPressed : (parent.hovered ? theme.colorBgHover : "transparent")
-                    }
-                }
-
-                RoundButton {
-                    implicitWidth: 52
-                    implicitHeight: 52
-                    radius: width / 2
-                    icon.source: root.isPlaying ? "../../assets/icons/pause.svg" : "../../assets/icons/play.svg"
-                    icon.color: "#ffffff"
-                    icon.width: 28
-                    icon.height: 28
-                    display: AbstractButton.IconOnly
-                    enabled: !!root.playback
-                    hoverEnabled: true
-                    onClicked: root.playback.togglePlayPause()
-                    background: Rectangle {
-                        radius: width / 2
-                        color: !parent.enabled
-                               ? Qt.rgba(59 / 255, 130 / 255, 246 / 255, 0.35)
-                               : (parent.down || parent.hovered ? theme.colorPrimaryActive : theme.colorPrimary)
-                        Behavior on color {
-                            ColorAnimation { duration: theme.motionFast; easing.type: Easing.OutCubic }
-                        }
-                    }
-                }
-
-                ToolButton {
-                    icon.source: "../../assets/icons/next.svg"
-                    icon.color: enabled ? theme.colorTextSecondary : theme.colorTextMuted
-                    icon.width: 24
-                    icon.height: 24
-                    display: AbstractButton.IconOnly
-                    enabled: !!root.playback && root.playback.hasNext
-                    hoverEnabled: true
-                    ToolTip.visible: hovered
-                    ToolTip.text: "下一首"
-                    onClicked: root.playback.next()
-                    background: Rectangle {
-                        radius: width / 2
-                        color: parent.down ? theme.colorBgPressed : (parent.hovered ? theme.colorBgHover : "transparent")
-                    }
-                }
-
-                ToolButton {
-                    icon.source: root.modeIconSource()
-                    icon.color: root.modeIndex === 0 ? theme.colorTextSecondary : theme.colorPrimary
-                    icon.width: 22
-                    icon.height: 22
-                    display: AbstractButton.IconOnly
-                    enabled: !!root.playback
-                    hoverEnabled: true
-                    ToolTip.visible: hovered
-                    ToolTip.text: root.playback ? ("播放模式：" + root.playback.playbackModeText) : "播放模式"
-                    onClicked: root.playback.cyclePlaybackMode()
-                    background: Rectangle {
-                        radius: width / 2
-                        color: parent.down ? theme.colorBgPressed : (parent.hovered ? theme.colorBgHover : "transparent")
-                    }
-                }
-            }
-
-            // ----- 右：音量 / 词 / 列表 -----
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.preferredWidth: 100
-                spacing: theme.space1
-
-                Item { Layout.fillWidth: true }
-
-                ToolButton {
-                    icon.source: root.volumeValue > 0 ? "../../assets/icons/volume.svg" : "../../assets/icons/volume_mute.svg"
-                    icon.color: theme.colorTextSecondary
-                    icon.width: 22
-                    icon.height: 22
-                    display: AbstractButton.IconOnly
-                    enabled: !!root.playback
-                    hoverEnabled: true
-                    ToolTip.visible: hovered
-                    ToolTip.text: root.volumeValue > 0 ? "静音" : "取消静音"
-                    onClicked: root.toggleMute()
-                    background: Rectangle {
-                        radius: width / 2
-                        color: parent.down ? theme.colorBgPressed : (parent.hovered ? theme.colorBgHover : "transparent")
-                    }
+                Label {
+                    text: root.playback ? root.playback.formatTime(root.playback.position) : "0:00"
+                    color: theme.colorTextMuted
+                    font.family: theme.fontFamily
+                    font.pixelSize: theme.fontCaption
+                    Layout.preferredWidth: 40
+                    horizontalAlignment: Text.AlignRight
                 }
 
                 Slider {
+                    id: progressSlider
+                    Layout.fillWidth: true
                     from: 0
-                    to: 100
-                    value: root.volumeValue
-                    enabled: !!root.playback
-                    Layout.preferredWidth: 96
+                    to: root.playback ? Math.max(root.playback.duration, 1) : 1
+                    value: root.playback ? root.playback.position : 0
+                    enabled: root.hasCurrentTrack
                     opacity: enabled ? 1 : 0.55
                     onMoved: {
-                        if (root.playback) {
-                            root.playback.setVolume(Math.round(value))
+                        if (root.playback && root.hasCurrentTrack) {
+                            root.playback.setPosition(value)
                         }
                     }
                 }
 
-                ToolButton {
-                    icon.source: "../../assets/icons/lyrics.svg"
-                    icon.color: theme.colorTextSecondary
-                    icon.width: 22
-                    icon.height: 22
-                    display: AbstractButton.IconOnly
-                    hoverEnabled: true
-                    ToolTip.visible: hovered
-                    ToolTip.text: root.nowPlayingOverlayVisible ? "关闭歌词" : "歌词"
-                    onClicked: root.lyricsRequested()
-                    background: Rectangle {
-                        radius: width / 2
-                        color: parent.down ? theme.colorBgPressed : (parent.hovered ? theme.colorBgHover : "transparent")
+                Label {
+                    text: root.playback ? root.playback.formatTime(root.playback.duration) : "0:00"
+                    color: theme.colorTextMuted
+                    font.family: theme.fontFamily
+                    font.pixelSize: theme.fontCaption
+                    Layout.preferredWidth: 40
+                }
+            }
+
+            // ----- 第 2 行：歌名 | 播放控制 | 右侧工具 -----
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: theme.space3
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: 100
+                    spacing: theme.space1
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 0
+
+                        MarqueeLabel {
+                            Layout.fillWidth: true
+                            text: root.playback ? root.playback.currentTrackName : "未选择歌曲"
+                            color: theme.colorTextPrimary
+                            fontFamily: theme.fontFamily
+                            fontPixelSize: theme.fontBody
+                            fontBold: true
+                        }
+
+                        Label {
+                            text: root.playback
+                                  ? (root.playback.errorMessage !== "" ? root.playback.errorMessage : root.playback.playbackStateText)
+                                  : "待机"
+                            color: root.playback && root.playback.errorMessage !== "" ? theme.colorStateError : theme.colorTextMuted
+                            font.family: theme.fontFamily
+                            font.pixelSize: theme.fontCaption
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                        }
+                    }
+
+                    ToolButton {
+                        icon.source: root.favoriteState ? "../../assets/icons/heart_filled.svg" : "../../assets/icons/heart.svg"
+                        icon.color: root.favoriteState ? theme.colorStateError : theme.colorTextMuted
+                        icon.width: 20
+                        icon.height: 20
+                        display: AbstractButton.IconOnly
+                        hoverEnabled: true
+                        enabled: root.hasCurrentTrack
+                        ToolTip.visible: hovered
+                        ToolTip.text: root.favoriteState ? "取消收藏" : "添加到我喜欢"
+                        onClicked: root.toggleFavorite()
+                        background: Rectangle {
+                            radius: width / 2
+                            color: parent.down ? theme.colorBgPressed : (parent.hovered ? theme.colorBgHover : "transparent")
+                        }
                     }
                 }
 
-                ToolButton {
-                    icon.source: "../../assets/icons/queue.svg"
-                    icon.color: theme.colorTextSecondary
-                    icon.width: 22
-                    icon.height: 22
-                    display: AbstractButton.IconOnly
-                    hoverEnabled: true
-                    ToolTip.visible: hovered
-                    ToolTip.text: "播放列表"
-                    onClicked: root.queueRequested()
-                    background: Rectangle {
+                RowLayout {
+                    spacing: theme.space3
+
+                    ToolButton {
+                        icon.source: "../../assets/icons/prev.svg"
+                        icon.color: enabled ? theme.colorTextSecondary : theme.colorTextMuted
+                        icon.width: 24
+                        icon.height: 24
+                        display: AbstractButton.IconOnly
+                        enabled: !!root.playback && root.playback.hasPrevious
+                        hoverEnabled: true
+                        ToolTip.visible: hovered
+                        ToolTip.text: "上一首"
+                        onClicked: root.playback.previous()
+                        background: Rectangle {
+                            radius: width / 2
+                            color: parent.down ? theme.colorBgPressed : (parent.hovered ? theme.colorBgHover : "transparent")
+                        }
+                    }
+
+                    RoundButton {
+                        implicitWidth: 52
+                        implicitHeight: 52
                         radius: width / 2
-                        color: parent.down ? theme.colorBgPressed : (parent.hovered ? theme.colorBgHover : "transparent")
+                        icon.source: root.isPlaying ? "../../assets/icons/pause.svg" : "../../assets/icons/play.svg"
+                        icon.color: "#ffffff"
+                        icon.width: 28
+                        icon.height: 28
+                        display: AbstractButton.IconOnly
+                        enabled: !!root.playback
+                        hoverEnabled: true
+                        onClicked: root.playback.togglePlayPause()
+                        background: Rectangle {
+                            radius: width / 2
+                            color: !parent.enabled
+                                   ? Qt.rgba(59 / 255, 130 / 255, 246 / 255, 0.35)
+                                   : (parent.down || parent.hovered ? theme.colorPrimaryActive : theme.colorPrimary)
+                            Behavior on color {
+                                ColorAnimation { duration: theme.motionFast; easing.type: Easing.OutCubic }
+                            }
+                        }
+                    }
+
+                    ToolButton {
+                        icon.source: "../../assets/icons/next.svg"
+                        icon.color: enabled ? theme.colorTextSecondary : theme.colorTextMuted
+                        icon.width: 24
+                        icon.height: 24
+                        display: AbstractButton.IconOnly
+                        enabled: !!root.playback && root.playback.hasNext
+                        hoverEnabled: true
+                        ToolTip.visible: hovered
+                        ToolTip.text: "下一首"
+                        onClicked: root.playback.next()
+                        background: Rectangle {
+                            radius: width / 2
+                            color: parent.down ? theme.colorBgPressed : (parent.hovered ? theme.colorBgHover : "transparent")
+                        }
+                    }
+
+                    ToolButton {
+                        icon.source: root.modeIconSource()
+                        icon.color: root.modeIndex === 0 ? theme.colorTextSecondary : theme.colorPrimary
+                        icon.width: 22
+                        icon.height: 22
+                        display: AbstractButton.IconOnly
+                        enabled: !!root.playback
+                        hoverEnabled: true
+                        ToolTip.visible: hovered
+                        ToolTip.text: root.playback ? ("播放模式：" + root.playback.playbackModeText) : "播放模式"
+                        onClicked: root.playback.cyclePlaybackMode()
+                        background: Rectangle {
+                            radius: width / 2
+                            color: parent.down ? theme.colorBgPressed : (parent.hovered ? theme.colorBgHover : "transparent")
+                        }
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: 100
+                    spacing: theme.space1
+
+                    Item { Layout.fillWidth: true }
+
+                    ToolButton {
+                        icon.source: root.volumeValue > 0 ? "../../assets/icons/volume.svg" : "../../assets/icons/volume_mute.svg"
+                        icon.color: theme.colorTextSecondary
+                        icon.width: 22
+                        icon.height: 22
+                        display: AbstractButton.IconOnly
+                        enabled: !!root.playback
+                        hoverEnabled: true
+                        ToolTip.visible: hovered
+                        ToolTip.text: root.volumeValue > 0 ? "静音" : "取消静音"
+                        onClicked: root.toggleMute()
+                        background: Rectangle {
+                            radius: width / 2
+                            color: parent.down ? theme.colorBgPressed : (parent.hovered ? theme.colorBgHover : "transparent")
+                        }
+                    }
+
+                    Slider {
+                        from: 0
+                        to: 100
+                        value: root.volumeValue
+                        enabled: !!root.playback
+                        Layout.preferredWidth: 96
+                        opacity: enabled ? 1 : 0.55
+                        onMoved: {
+                            if (root.playback) {
+                                root.playback.setVolume(Math.round(value))
+                            }
+                        }
+                    }
+
+                    ToolButton {
+                        icon.source: "../../assets/icons/lyrics.svg"
+                        icon.color: theme.colorTextSecondary
+                        icon.width: 22
+                        icon.height: 22
+                        display: AbstractButton.IconOnly
+                        hoverEnabled: true
+                        enabled: root.hasCurrentTrack
+                        ToolTip.visible: hovered
+                        ToolTip.text: root.nowPlayingOverlayVisible ? "关闭歌词" : "歌词"
+                        onClicked: root.lyricsRequested()
+                        background: Rectangle {
+                            radius: width / 2
+                            color: parent.down ? theme.colorBgPressed : (parent.hovered ? theme.colorBgHover : "transparent")
+                        }
+                    }
+
+                    ToolButton {
+                        icon.source: "../../assets/icons/queue.svg"
+                        icon.color: theme.colorTextSecondary
+                        icon.width: 22
+                        icon.height: 22
+                        display: AbstractButton.IconOnly
+                        hoverEnabled: true
+                        ToolTip.visible: hovered
+                        ToolTip.text: "播放列表"
+                        onClicked: root.queueRequested()
+                        background: Rectangle {
+                            radius: width / 2
+                            color: parent.down ? theme.colorBgPressed : (parent.hovered ? theme.colorBgHover : "transparent")
+                        }
                     }
                 }
             }

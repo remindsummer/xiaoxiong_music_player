@@ -112,6 +112,7 @@ qt_add_qml_module(xxMusic
 
         # ===== QML 组件分区 =====
         qml/components/PlaybackBar.qml
+        qml/components/MarqueeLabel.qml
         qml/components/SearchBar.qml
         qml/components/LyricsPanel.qml
         qml/components/QueuePanel.qml
