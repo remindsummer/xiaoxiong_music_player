@@ -209,6 +209,8 @@ private:
     void applyPendingRestorePosition(QMediaPlayer::MediaStatus status);
     void updateTrackMetadata();
     void resetTrackMetadata();
+    void checkPlaybackStall();
+    void recoverFromPlaybackStall();
 
     QString m_statusText = QStringLiteral("待机");
     QString m_currentFileFormat;
@@ -221,4 +223,7 @@ private:
     CoverFetchState m_coverFetchState = CoverFetchState::Idle;
     QString m_coverFetchLastError;
     qint64 m_pendingRestorePositionMs = -1;
+    class QTimer *m_stallWatchdog = nullptr;
+    qint64 m_lastPositionSample = -1;
+    int m_unchangedPositionTicks = 0;
 };

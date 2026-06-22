@@ -189,11 +189,21 @@ Rectangle {
                     Layout.fillWidth: true
                     from: 0
                     to: root.playback ? Math.max(root.playback.duration, 1) : 1
-                    value: root.playback ? root.playback.position : 0
+                    property bool userSeeking: false
+                    property real seekPosition: 0
+                    live: true
+                    value: userSeeking ? seekPosition : (root.playback ? root.playback.position : 0)
                     enabled: root.hasCurrentTrack
                     opacity: enabled ? 1 : 0.55
+                    onPressedChanged: {
+                        if (pressed && root.playback) {
+                            seekPosition = root.playback.position
+                        }
+                        userSeeking = pressed
+                    }
                     onMoved: {
                         if (root.playback && root.hasCurrentTrack) {
+                            seekPosition = value
                             root.playback.setPosition(value)
                         }
                     }

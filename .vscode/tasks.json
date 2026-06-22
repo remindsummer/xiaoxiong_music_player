@@ -31,7 +31,48 @@
                 "--build",
                 "${workspaceFolder}/build",
                 "--config",
-                "Debug"
+                "Debug",
+                "--target",
+                "xxMusic",
+                "--parallel"
+            ],
+            "group": "build",
+            "problemMatcher": "$msCompile",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "CMake: Build All",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}/build",
+                "--config",
+                "Debug",
+                "--parallel"
+            ],
+            "group": "build",
+            "problemMatcher": "$msCompile",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "CMake: Build Release",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}/build",
+                "--config",
+                "Release",
+                "--target",
+                "xxMusic",
+                "--parallel"
             ],
             "group": "build",
             "problemMatcher": "$msCompile",
@@ -72,6 +113,21 @@
             }
         },
         {
+            "label": "Run xxMusic (Release)",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-Command",
+                "Start-Process -FilePath '${workspaceFolder}/build/Release/xxMusic.exe'"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "silent",
+                "panel": "shared"
+            }
+        },
+        {
             "label": "Build and Run",
             "dependsOn": [
                 "CMake: Build",
@@ -83,6 +139,40 @@
                 "isDefault": true
             },
             "problemMatcher": []
+        },
+        {
+            "label": "Build Release and Run",
+            "dependsOn": [
+                "CMake: Build Release",
+                "Run xxMusic (Release)"
+            ],
+            "dependsOrder": "sequence",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Package: Build Release Installer",
+            "dependsOn": [
+                "CMake: Build Release",
+                "Inno: Compile Installer"
+            ],
+            "dependsOrder": "sequence",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Inno: Compile Installer",
+            "type": "shell",
+            "command": "C:/Program Files (x86)/Inno Setup 6/ISCC.exe",
+            "args": [
+                "${workspaceFolder}/packaging/inno/xiaoxiong_music_player.iss"
+            ],
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
         }
     ]
 }

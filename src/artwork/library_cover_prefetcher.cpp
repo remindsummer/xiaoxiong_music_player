@@ -1,21 +1,16 @@
 #include "library_cover_prefetcher.h"
 
+#include "../library/audio_tag_reader.h"
 #include "cover_art_service.h"
 #include "../network/meting_api.h"
 
-#include <QBuffer>
 #include <QFileInfo>
-#include <QImage>
-#include <QMediaMetaData>
-#include <QMediaPlayer>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QTimer>
-#include <QUrl>
 
 namespace {
-constexpr int kPerItemTimeoutMs = 8000;
 
 bool pathsReferToSameTrack(const QString &left, const QString &right)
 {
@@ -27,46 +22,13 @@ bool pathsReferToSameTrack(const QString &left, const QString &right)
     }
     return QFileInfo(left).absoluteFilePath() == QFileInfo(right).absoluteFilePath();
 }
+
 } // namespace
 
 LibraryCoverPrefetcher::LibraryCoverPrefetcher(QObject *parent)
     : QObject(parent)
-    , m_player(new QMediaPlayer(this))
-    , m_timeout(new QTimer(this))
     , m_network(new QNetworkAccessManager(this))
 {
-    m_timeout->setSingleShot(true);
-    m_timeout->setInterval(kPerItemTimeoutMs);
-
-    connect(m_timeout, &QTimer::timeout, this, [this]() {
-        if (m_phase == Phase::LoadingEmbedded && m_awaitingLoad) {
-            finishEmbeddedLookup();
-        }
-    });
-
-    connect(m_player, &QMediaPlayer::mediaStatusChanged, this,
-            [this](QMediaPlayer::MediaStatus status) {
-        if (m_phase != Phase::LoadingEmbedded || !m_awaitingLoad) {
-            return;
-        }
-        if (status == QMediaPlayer::LoadedMedia || status == QMediaPlayer::BufferedMedia) {
-            finishEmbeddedLookup();
-        } else if (status == QMediaPlayer::InvalidMedia) {
-            m_awaitingLoad = false;
-            m_timeout->stop();
-            startMetingLookup();
-        }
-    });
-
-    connect(m_player, &QMediaPlayer::errorOccurred, this,
-            [this](QMediaPlayer::Error, const QString &) {
-        if (m_phase != Phase::LoadingEmbedded || !m_awaitingLoad) {
-            return;
-        }
-        m_awaitingLoad = false;
-        m_timeout->stop();
-        startMetingLookup();
-    });
 }
 
 void LibraryCoverPrefetcher::setCoverArtService(CoverArtService *coverArt)
@@ -96,16 +58,11 @@ void LibraryCoverPrefetcher::fetchNow(const QString &path, const QString &title,
 
 void LibraryCoverPrefetcher::cancelInFlight()
 {
-    m_awaitingLoad = false;
-    m_timeout->stop();
-
     if (m_metingReply) {
         m_metingReply->abort();
         m_metingReply->deleteLater();
         m_metingReply = nullptr;
     }
-
-    m_player->setSource(QUrl());
 }
 
 void LibraryCoverPrefetcher::enqueue(const QString &path, const QString &title, const QString &artist)
@@ -160,7 +117,6 @@ void LibraryCoverPrefetcher::processNext()
         m_busy = false;
         m_phase = Phase::Idle;
         m_current = PendingItem{};
-        m_player->setSource(QUrl());
         return;
     }
 
@@ -177,55 +133,17 @@ void LibraryCoverPrefetcher::processNext()
 
 void LibraryCoverPrefetcher::startEmbeddedLookup()
 {
-    m_phase = Phase::LoadingEmbedded;
-    m_awaitingLoad = true;
-    m_timeout->start();
-    m_player->setSource(QUrl::fromLocalFile(m_current.path));
-}
-
-void LibraryCoverPrefetcher::finishEmbeddedLookup()
-{
-    m_awaitingLoad = false;
-    m_timeout->stop();
-
-    if (m_coverArt) {
-        const QMediaMetaData md = m_player->metaData();
-        QByteArray imageData;
-        const QVariant thumbVariant = md.value(QMediaMetaData::ThumbnailImage);
-        const QVariant coverVariant = md.value(QMediaMetaData::CoverArtImage);
-
-        auto variantToJpeg = [](const QVariant &variant) -> QByteArray {
-            if (variant.canConvert<QImage>()) {
-                const QImage image = variant.value<QImage>();
-                if (image.isNull()) {
-                    return QByteArray();
-                }
-                QByteArray bytes;
-                QBuffer buffer(&bytes);
-                buffer.open(QIODevice::WriteOnly);
-                if (!image.save(&buffer, "JPG")) {
-                    return QByteArray();
-                }
-                return bytes;
+    QTimer::singleShot(0, this, [this]() {
+        if (m_coverArt) {
+            const QByteArray imageData = AudioTagReader::readEmbeddedCover(m_current.path);
+            if (!imageData.isEmpty()) {
+                m_coverArt->saveCoverBytes(m_current.path, imageData);
+                finishCurrent();
+                return;
             }
-            if (variant.canConvert<QByteArray>()) {
-                return variant.toByteArray();
-            }
-            return QByteArray();
-        };
-
-        imageData = variantToJpeg(thumbVariant);
-        if (imageData.isEmpty()) {
-            imageData = variantToJpeg(coverVariant);
         }
-        if (!imageData.isEmpty()) {
-            m_coverArt->saveCoverBytes(m_current.path, imageData);
-            finishCurrent();
-            return;
-        }
-    }
-
-    startMetingLookup();
+        startMetingLookup();
+    });
 }
 
 void LibraryCoverPrefetcher::requestCoverThenContinue(const QString &picUrl,
@@ -321,7 +239,6 @@ void LibraryCoverPrefetcher::finishManualFetch(bool success, const QString &mess
     m_busy = false;
     m_phase = Phase::Idle;
     m_current = PendingItem{};
-    m_player->setSource(QUrl());
 
     if (!m_queue.isEmpty()) {
         processNext();
@@ -331,7 +248,6 @@ void LibraryCoverPrefetcher::finishManualFetch(bool success, const QString &mess
 void LibraryCoverPrefetcher::finishCurrent()
 {
     m_phase = Phase::Idle;
-    m_player->setSource(QUrl());
 
     if (m_manualFetch) {
         const bool success = m_coverArt && !m_coverArt->cachedCoverPath(m_current.path).isEmpty();

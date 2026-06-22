@@ -4,12 +4,8 @@
 #include <QQueue>
 #include <QString>
 
-class QMediaPlayer;
-class QTimer;
-
-// 基于 QMediaPlayer 的异步元数据探测器：
-// 逐个加载音频文件（不播放），读取时长与标题/歌手/专辑标签后回填。
-// 全程串行，单实例处理一个队列，避免同时打开过多解码器。
+// 基于 TagLib 的异步元数据探测器：
+// 逐个读取音频文件标签（不播放），回填时长与标题/歌手/专辑。
 class LibraryMetadataResolver : public QObject
 {
     Q_OBJECT
@@ -35,16 +31,12 @@ private:
     };
 
     void processNext();
-    void resolveCurrentFromPlayer();
     void finishCurrent(const QString &title,
                        const QString &artist,
                        const QString &album,
                        qint64 durationMs);
 
-    QMediaPlayer *m_player = nullptr;
-    QTimer *m_timeout = nullptr;
     QQueue<PendingItem> m_queue;
     PendingItem m_current;
     bool m_busy = false;
-    bool m_awaitingLoad = false;
 };

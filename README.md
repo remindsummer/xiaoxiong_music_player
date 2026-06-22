@@ -53,6 +53,7 @@
 | 依赖 | 说明 |
 |------|------|
 | **Qt** | 6.x（开发环境示例：6.9.3），需安装 **Multimedia**、**Quick**、**QuickControls2**、**Network** 组件 |
+| **TagLib** | 元数据与内嵌封面读取；源码 vendoring 在 `third_party/taglib/`（v2.0.2），构建为动态库 |
 | **CMake** | 4.3.3+ |
 | **C++ 编译器** | 支持 C++17（Windows：Visual Studio 2022 x64；Linux/macOS：对应 Qt Kit 的编译器） |
 | **系统** | 主要在 Windows 10/11 x64 开发与测试；架构上可移植至 Linux / macOS |
@@ -64,6 +65,7 @@
 ```
 xiaoxiong_music_player/
 ├── CMakeLists.txt          # 构建与 QML 模块配置
+├── third_party/taglib/     # TagLib v2.0.2 源码（vendored，动态库编译）
 ├── assets/icons/           # SVG 图标（源码，需纳入 Git）
 ├── qml/
 │   ├── Main.qml            # 主窗口与导航
@@ -100,6 +102,8 @@ xiaoxiong_music_player/
 cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_PREFIX_PATH=C:/Qt/6.9.3/msvc2022_64
 ```
 
+TagLib 已包含在 `third_party/taglib/`，配置阶段**无需联网**；Windows 下编译后会将 `tag.dll`、`tag_c.dll` 复制到 exe 同目录。
+
 **编译并运行：**
 
 ```powershell
@@ -115,6 +119,32 @@ cmake --build build --config Debug
 cd build
 ctest -C Debug --output-on-failure
 ```
+
+### Release 与安装包
+
+**Release 编译：**
+
+```powershell
+cmake --build build --config Release --target xxMusic --parallel
+.\build\Release\xxMusic.exe
+```
+
+Release 为 GUI 子系统（无控制台），适合分发给普通用户。
+
+**制作 Windows 安装程序（Inno Setup）：**
+
+1. 安装 [Inno Setup 6](https://jrsoftware.org/isinfo.php)
+2. （可选）将 `vc_redist.x64.exe` 放入 `packaging/redist/`（见 `packaging/redist/README.md`）
+3. 按 [packaging/release-checklist.md](packaging/release-checklist.md) 完成 Release 验证
+4. VS Code：**Tasks → Package: Build Release Installer**，或手动：
+
+```powershell
+& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" packaging\inno\xiaoxiong_music_player.iss
+```
+
+安装包输出：`packaging/inno/output/小熊音乐播放器_1.0.0_Setup.exe`
+
+详细说明见 [packaging/inno/README.md](packaging/inno/README.md)。
 
 ### 指定 Qt 路径
 

@@ -23,6 +23,29 @@ message(STATUS "使用的 Qt 路径 (CMAKE_PREFIX_PATH): ${CMAKE_PREFIX_PATH}")
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Svg Quick QuickControls2 Multimedia Network LinguistTools)
 
+# ===== TagLib（vendored，动态库）=====
+set(TAGLIB_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/taglib")
+if(NOT EXISTS "${TAGLIB_SOURCE_DIR}/CMakeLists.txt")
+    message(FATAL_ERROR "缺少 vendored TagLib 源码：${TAGLIB_SOURCE_DIR}")
+endif()
+
+set(_xxmusic_saved_build_shared_libs "${BUILD_SHARED_LIBS}")
+set(BUILD_SHARED_LIBS ON)
+set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(BUILD_BINDINGS ON CACHE BOOL "" FORCE)
+add_subdirectory("${TAGLIB_SOURCE_DIR}" "${CMAKE_BINARY_DIR}/third_party/taglib" EXCLUDE_FROM_ALL)
+set(BUILD_SHARED_LIBS "${_xxmusic_saved_build_shared_libs}")
+
+if(NOT TARGET tag_c)
+    message(FATAL_ERROR "TagLib C 绑定目标 tag_c 未生成，请确认 third_party/taglib 完整且 BUILD_BINDINGS=ON")
+endif()
+if(NOT TARGET TagLib::tag_c)
+    target_include_directories(tag_c INTERFACE
+        "$<BUILD_INTERFACE:${TAGLIB_SOURCE_DIR}/bindings/c>"
+    )
+    add_library(TagLib::tag_c ALIAS tag_c)
+endif()
+
 # 启用 Qt 标准 CMake 行为（AUTOMOC、QML 模块等）
 qt_standard_project_setup()
 
@@ -57,6 +80,8 @@ qt_add_executable(xxMusic
     src/library/library_repository.h
     src/library/library_metadata_resolver.cpp
     src/library/library_metadata_resolver.h
+    src/library/audio_tag_reader.cpp
+    src/library/audio_tag_reader.h
 
     # ===== 播放列表模块 =====
     src/playlist/playlist_service.cpp
@@ -197,6 +222,7 @@ target_link_libraries(xxMusic PRIVATE
     Qt6::QuickControls2 # QQuickStyle 设置控件样式
     Qt6::Multimedia
     Qt6::Network # 在线歌词（LRCLIB）所需
+    TagLib::tag_c
 )
 
 if(WIN32)
@@ -217,6 +243,17 @@ find_program(WINDEPLOYQT_EXECUTABLE
     NAMES windeployqt
     HINTS "${CMAKE_PREFIX_PATH}/bin"
 )
+
+if(WIN32)
+    add_custom_command(TARGET xxMusic POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "$<TARGET_FILE:tag>"
+            "$<TARGET_FILE:tag_c>"
+            "$<TARGET_FILE_DIR:xxMusic>"
+        COMMENT "Copying TagLib DLLs next to xxMusic..."
+        VERBATIM
+    )
+endif()
 
 if(WINDEPLOYQT_EXECUTABLE)
     # 每次编译后自动把 Qt / QML 依赖平铺部署到 exe 同目录（如 build/Debug/）

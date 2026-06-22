@@ -20,6 +20,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QRandomGenerator>
+#include <QTimer>
 #include <QUrl>
 #include <QVariantMap>
 #include <QtMath>
@@ -56,6 +57,9 @@ PlaybackService::PlaybackService(QObject *parent)
         if (status == QMediaPlayer::LoadedMedia || status == QMediaPlayer::BufferedMedia) {
             updateTrackMetadata();
         }
+        if (status == QMediaPlayer::StalledMedia) {
+            m_unchangedPositionTicks = 0;
+        }
         applyPendingRestorePosition(status);
     });
     connect(m_player, &QMediaPlayer::metaDataChanged, this, [this]() {
@@ -65,6 +69,11 @@ PlaybackService::PlaybackService(QObject *parent)
         setError(errorString);
         updateStatusText();
     });
+
+    m_stallWatchdog = new QTimer(this);
+    m_stallWatchdog->setInterval(2000);
+    connect(m_stallWatchdog, &QTimer::timeout, this, &PlaybackService::checkPlaybackStall);
+    m_stallWatchdog->start();
 
     updateStatusText();
 }
@@ -746,6 +755,8 @@ void PlaybackService::loadTrack(int index, bool autoplay)
     }
 
     m_pendingRestorePositionMs = -1;
+    m_lastPositionSample = -1;
+    m_unchangedPositionTicks = 0;
 
     const QueueItem &item = m_queue.at(index);
     if (item.isOnline) {
@@ -1305,6 +1316,71 @@ void PlaybackService::updateTrackMetadata()
     if (changed) {
         emit trackMetadataChanged();
     }
+}
+
+void PlaybackService::checkPlaybackStall()
+{
+    if (state() != PlaybackState::Playing || m_currentIndex < 0) {
+        m_lastPositionSample = -1;
+        m_unchangedPositionTicks = 0;
+        return;
+    }
+
+    const qint64 pos = m_player->position();
+    const qint64 dur = m_player->duration();
+    if (dur <= 0) {
+        return;
+    }
+
+    // 临近结尾时 position 可能短暂不变，避免误触发恢复。
+    if (pos >= dur - 1000) {
+        m_lastPositionSample = pos;
+        m_unchangedPositionTicks = 0;
+        return;
+    }
+
+    if (m_lastPositionSample >= 0 && pos == m_lastPositionSample) {
+        ++m_unchangedPositionTicks;
+    } else {
+        m_unchangedPositionTicks = 0;
+    }
+    m_lastPositionSample = pos;
+
+    if (m_unchangedPositionTicks >= 2) {
+        recoverFromPlaybackStall();
+    }
+}
+
+void PlaybackService::recoverFromPlaybackStall()
+{
+    if (m_currentIndex < 0 || m_currentIndex >= m_queue.size()) {
+        return;
+    }
+
+    m_unchangedPositionTicks = 0;
+    m_lastPositionSample = -1;
+
+    const int index = m_currentIndex;
+    const qint64 pos = m_player->position();
+    m_pendingRestorePositionMs = qMax<qint64>(0, pos);
+
+    const QueueItem &item = m_queue.at(index);
+    if (item.isOnline) {
+        resolveOnlineStreamAndLoad(index, true);
+        return;
+    }
+
+    clearError();
+    resetTrackMetadata();
+    resetCoverFetchState();
+    m_player->setSource(item.url);
+    emit currentTrackChanged();
+    updateCoverForCurrentTrack();
+    emit queueChanged();
+    emit positionChanged();
+    emit durationChanged();
+    m_player->play();
+    updateStatusText();
 }
 
 void PlaybackService::retranslateUi()
