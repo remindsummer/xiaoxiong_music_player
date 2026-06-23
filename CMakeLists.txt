@@ -60,6 +60,8 @@ qt_add_executable(xxMusic
     src/app/application_bootstrap.h
     src/app/tray_service.cpp
     src/app/tray_service.h
+    src/app/single_instance_guard.cpp
+    src/app/single_instance_guard.h
     src/ui_bridge/application_controller.cpp
     src/ui_bridge/application_controller.h
 

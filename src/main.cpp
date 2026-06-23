@@ -7,6 +7,8 @@
 #include <QQuickStyle>
 #include <QDebug>
 
+#include "app/single_instance_guard.h"
+#include "app/tray_service.h"
 #include "ui_bridge/application_controller.h"
 #include "player/playback_service.h"
 #include "settings/settings_service.h"
@@ -32,6 +34,11 @@ int main(int argc, char *argv[])
 
     QCoreApplication::setOrganizationName(QStringLiteral("Xiaoxiong"));
     QCoreApplication::setApplicationName(QStringLiteral("XiaoxiongMusicPlayer"));
+
+    SingleInstanceGuard singleInstanceGuard;
+    if (!singleInstanceGuard.tryAcquirePrimaryInstance()) {
+        return 0;
+    }
 
     QQuickStyle::setStyle(QStringLiteral("Basic"));
 
@@ -59,6 +66,15 @@ int main(int argc, char *argv[])
 
     if (engine.rootObjects().isEmpty())
         return -1;
+
+    QObject::connect(
+        &singleInstanceGuard, &SingleInstanceGuard::activationRequested,
+        controller.trayService(), [trayService = qobject_cast<TrayService *>(controller.trayService())]() {
+            if (trayService) {
+                trayService->showMainWindow();
+            }
+        },
+        Qt::QueuedConnection);
 
     QObject::connect(&app, &QCoreApplication::aboutToQuit, &controller, [&controller]() {
         if (PlaybackService *playback = qobject_cast<PlaybackService *>(controller.playbackService())) {

@@ -12,6 +12,7 @@
 class AudioVisualizerService;
 class CoverArtService;
 class LibraryCoverPrefetcher;
+class QAudioDevice;
 
 class PlaybackService : public QObject
 {
@@ -172,6 +173,7 @@ private:
         QString picUrl;
     };
 
+    class QMediaDevices *m_mediaDevices = nullptr;
     class QMediaPlayer *m_player = nullptr;
     class QAudioOutput *m_audioOutput = nullptr;
     class QAudioBufferOutput *m_bufferOutput = nullptr;
@@ -211,6 +213,9 @@ private:
     void resetTrackMetadata();
     void checkPlaybackStall();
     void recoverFromPlaybackStall();
+    void handleAudioOutputDeviceChange();
+    bool shouldSwitchAudioOutputDevice(const QAudioDevice &currentDevice,
+                                       const QAudioDevice &newDefault) const;
 
     QString m_statusText = QStringLiteral("待机");
     QString m_currentFileFormat;
@@ -226,4 +231,5 @@ private:
     class QTimer *m_stallWatchdog = nullptr;
     qint64 m_lastPositionSample = -1;
     int m_unchangedPositionTicks = 0;
+    bool m_handlingAudioDeviceChange = false;
 };

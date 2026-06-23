@@ -6,7 +6,9 @@
 #include "audio_visualizer_service.h"
 
 #include <QAudioBufferOutput>
+#include <QAudioDevice>
 #include <QAudioOutput>
+#include <QMediaDevices>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -27,10 +29,12 @@
 
 PlaybackService::PlaybackService(QObject *parent)
     : QObject(parent)
+    , m_mediaDevices(new QMediaDevices(this))
     , m_player(new QMediaPlayer(this))
     , m_audioOutput(new QAudioOutput(this))
     , m_network(new QNetworkAccessManager(this))
 {
+    m_audioOutput->setDevice(QMediaDevices::defaultAudioOutput());
     m_audioOutput->setVolume(0.8f);
     m_player->setAudioOutput(m_audioOutput);
 
@@ -69,6 +73,8 @@ PlaybackService::PlaybackService(QObject *parent)
         setError(errorString);
         updateStatusText();
     });
+    connect(m_mediaDevices, &QMediaDevices::audioOutputsChanged,
+            this, &PlaybackService::handleAudioOutputDeviceChange);
 
     m_stallWatchdog = new QTimer(this);
     m_stallWatchdog->setInterval(2000);
@@ -1349,6 +1355,60 @@ void PlaybackService::checkPlaybackStall()
     if (m_unchangedPositionTicks >= 2) {
         recoverFromPlaybackStall();
     }
+}
+
+bool PlaybackService::shouldSwitchAudioOutputDevice(const QAudioDevice &currentDevice,
+                                                    const QAudioDevice &newDefault) const
+{
+    if (newDefault.isNull()) {
+        return false;
+    }
+
+    if (currentDevice.id() != newDefault.id()) {
+        return true;
+    }
+
+    for (const QAudioDevice &device : QMediaDevices::audioOutputs()) {
+        if (device.id() == currentDevice.id()) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void PlaybackService::handleAudioOutputDeviceChange()
+{
+    if (m_handlingAudioDeviceChange) {
+        return;
+    }
+
+    const QAudioDevice newDefault = QMediaDevices::defaultAudioOutput();
+    const QAudioDevice currentDevice = m_audioOutput->device();
+    if (!shouldSwitchAudioOutputDevice(currentDevice, newDefault)) {
+        return;
+    }
+
+    m_handlingAudioDeviceChange = true;
+
+    const bool resumePlayback = state() == PlaybackState::Playing;
+    const qint64 savedPosition = m_currentIndex >= 0 ? m_player->position() : -1;
+
+    m_player->stop();
+    m_audioOutput->setDevice(newDefault);
+
+    if (m_currentIndex >= 0 && resumePlayback) {
+        if (savedPosition >= 0) {
+            m_pendingRestorePositionMs = savedPosition;
+        }
+        m_player->play();
+    } else if (m_currentIndex >= 0 && savedPosition > 0) {
+        m_player->setPosition(savedPosition);
+        emit positionChanged();
+    }
+
+    updateStatusText();
+    m_handlingAudioDeviceChange = false;
 }
 
 void PlaybackService::recoverFromPlaybackStall()
