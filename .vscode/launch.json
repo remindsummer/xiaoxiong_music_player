@@ -5,12 +5,21 @@
             "name": "Debug (CodeLLDB)",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/build/Debug/xxMusic.exe",
             "args": [],
-            "cwd": "${workspaceFolder}/build/Debug",
             "preLaunchTask": "CMake: Build",
             "terminal": "integrated",
-            "stdio": "inherit"
+            "stdio": "inherit",
+            "linux": {
+                "program": "${workspaceFolder}/build/xxMusic",
+                "cwd": "${workspaceFolder}/build",
+                "env": {
+                    "PATH": "${env:HOME}/Qt/6.9.3/gcc_64/bin:${env:PATH}"
+                }
+            },
+            "windows": {
+                "program": "${workspaceFolder}/build/Debug/xxMusic.exe",
+                "cwd": "${workspaceFolder}/build/Debug"
+            }
         },
         {
             "name": "Debug (MSVC)",
@@ -21,7 +30,8 @@
             "cwd": "${workspaceFolder}/build/Debug",
             "stopAtEntry": false,
             "preLaunchTask": "CMake: Build",
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            "windows": {}
         }
     ]
 }

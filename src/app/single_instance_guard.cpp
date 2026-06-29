@@ -3,6 +3,7 @@
 #include <QCoreApplication>
 #include <QLocalServer>
 #include <QLocalSocket>
+#include <QDebug>
 
 namespace {
 
@@ -24,7 +25,8 @@ SingleInstanceGuard::~SingleInstanceGuard()
 
 QString SingleInstanceGuard::serverKey()
 {
-    return QCoreApplication::organizationName() + QLatin1Char('/')
+    // 勿用 '/'：Linux 下 QLocalServer 会将其当作路径分隔符，/tmp/Xiaoxiong/ 不存在时 listen 失败。
+    return QCoreApplication::organizationName() + QLatin1Char('.')
            + QCoreApplication::applicationName();
 }
 
@@ -48,6 +50,7 @@ bool SingleInstanceGuard::notifyPrimaryInstanceAndExit()
 bool SingleInstanceGuard::tryAcquirePrimaryInstance()
 {
     if (notifyPrimaryInstanceAndExit()) {
+        qInfo().noquote() << QStringLiteral("已有实例在运行，激活主窗口后退出。");
         return false;
     }
 
@@ -58,6 +61,8 @@ bool SingleInstanceGuard::tryAcquirePrimaryInstance()
     connect(m_server, &QLocalServer::newConnection, this, &SingleInstanceGuard::handleNewConnection);
 
     if (!m_server->listen(key)) {
+        qWarning().noquote() << QStringLiteral("单实例锁 listen 失败：%1（key=%2）")
+                                    .arg(m_server->errorString(), key);
         if (notifyPrimaryInstanceAndExit()) {
             return false;
         }

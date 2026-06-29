@@ -4,20 +4,23 @@
         {
             "label": "CMake: Configure",
             "type": "shell",
-            "command": "cmake",
-            "args": [
-                "-S",
-                "${workspaceFolder}",
-                "-B",
-                "${workspaceFolder}/build",
-                "-G",
-                "Visual Studio 17 2022",
-                "-A",
-                "x64",
-                "-DCMAKE_PREFIX_PATH=C:/Qt/6.9.3/msvc2022_64"
-            ],
+            "linux": {
+                "command": "cmake",
+                "args": [
+                    "--preset",
+                    "linux-debug"
+                ],
+                "problemMatcher": "$gcc"
+            },
+            "windows": {
+                "command": "cmake",
+                "args": [
+                    "--preset",
+                    "windows-debug"
+                ],
+                "problemMatcher": "$msCompile"
+            },
             "group": "build",
-            "problemMatcher": "$msCompile",
             "presentation": {
                 "reveal": "always",
                 "panel": "shared"
@@ -26,18 +29,31 @@
         {
             "label": "CMake: Build",
             "type": "shell",
-            "command": "cmake",
-            "args": [
-                "--build",
-                "${workspaceFolder}/build",
-                "--config",
-                "Debug",
-                "--target",
-                "xxMusic",
-                "--parallel"
-            ],
+            "linux": {
+                "command": "cmake",
+                "args": [
+                    "--build",
+                    "--preset",
+                    "linux-debug",
+                    "--target",
+                    "xxMusic",
+                    "--parallel"
+                ],
+                "problemMatcher": "$gcc"
+            },
+            "windows": {
+                "command": "cmake",
+                "args": [
+                    "--build",
+                    "--preset",
+                    "windows-debug",
+                    "--target",
+                    "xxMusic",
+                    "--parallel"
+                ],
+                "problemMatcher": "$msCompile"
+            },
             "group": "build",
-            "problemMatcher": "$msCompile",
             "presentation": {
                 "reveal": "always",
                 "panel": "shared"
@@ -46,16 +62,27 @@
         {
             "label": "CMake: Build All",
             "type": "shell",
-            "command": "cmake",
-            "args": [
-                "--build",
-                "${workspaceFolder}/build",
-                "--config",
-                "Debug",
-                "--parallel"
-            ],
+            "linux": {
+                "command": "cmake",
+                "args": [
+                    "--build",
+                    "--preset",
+                    "linux-debug",
+                    "--parallel"
+                ],
+                "problemMatcher": "$gcc"
+            },
+            "windows": {
+                "command": "cmake",
+                "args": [
+                    "--build",
+                    "--preset",
+                    "windows-debug",
+                    "--parallel"
+                ],
+                "problemMatcher": "$msCompile"
+            },
             "group": "build",
-            "problemMatcher": "$msCompile",
             "presentation": {
                 "reveal": "always",
                 "panel": "shared"
@@ -64,34 +91,31 @@
         {
             "label": "CMake: Build Release",
             "type": "shell",
-            "command": "cmake",
-            "args": [
-                "--build",
-                "${workspaceFolder}/build",
-                "--config",
-                "Release",
-                "--target",
-                "xxMusic",
-                "--parallel"
-            ],
+            "linux": {
+                "command": "cmake",
+                "args": [
+                    "--build",
+                    "--preset",
+                    "linux-release",
+                    "--target",
+                    "xxMusic",
+                    "--parallel"
+                ],
+                "problemMatcher": "$gcc"
+            },
+            "windows": {
+                "command": "cmake",
+                "args": [
+                    "--build",
+                    "--preset",
+                    "windows-release",
+                    "--target",
+                    "xxMusic",
+                    "--parallel"
+                ],
+                "problemMatcher": "$msCompile"
+            },
             "group": "build",
-            "problemMatcher": "$msCompile",
-            "presentation": {
-                "reveal": "always",
-                "panel": "shared"
-            }
-        },
-        {
-            "label": "Qt: Deploy",
-            "type": "shell",
-            "command": "C:/Qt/6.9.3/msvc2022_64/bin/windeployqt.exe",
-            "args": [
-                "--debug",
-                "--qmldir",
-                "${workspaceFolder}/qml",
-                "${workspaceFolder}/build/Debug/xxMusic.exe"
-            ],
-            "problemMatcher": [],
             "presentation": {
                 "reveal": "always",
                 "panel": "shared"
@@ -100,12 +124,20 @@
         {
             "label": "Run xxMusic",
             "type": "shell",
-            "command": "powershell",
-            "args": [
-                "-NoProfile",
-                "-Command",
-                "Start-Process -FilePath '${workspaceFolder}/build/Debug/xxMusic.exe'"
-            ],
+            "linux": {
+                "command": "${workspaceFolder}/build/xxMusic",
+                "options": {
+                    "cwd": "${workspaceFolder}/build"
+                }
+            },
+            "windows": {
+                "command": "powershell",
+                "args": [
+                    "-NoProfile",
+                    "-Command",
+                    "Start-Process -FilePath '${workspaceFolder}/build/Debug/xxMusic.exe'"
+                ]
+            },
             "problemMatcher": [],
             "presentation": {
                 "reveal": "silent",
@@ -115,12 +147,20 @@
         {
             "label": "Run xxMusic (Release)",
             "type": "shell",
-            "command": "powershell",
-            "args": [
-                "-NoProfile",
-                "-Command",
-                "Start-Process -FilePath '${workspaceFolder}/build/Release/xxMusic.exe'"
-            ],
+            "linux": {
+                "command": "${workspaceFolder}/build/xxMusic",
+                "options": {
+                    "cwd": "${workspaceFolder}/build"
+                }
+            },
+            "windows": {
+                "command": "powershell",
+                "args": [
+                    "-NoProfile",
+                    "-Command",
+                    "Start-Process -FilePath '${workspaceFolder}/build/Release/xxMusic.exe'"
+                ]
+            },
             "problemMatcher": [],
             "presentation": {
                 "reveal": "silent",
@@ -151,22 +191,43 @@
             "problemMatcher": []
         },
         {
+            "label": "Qt: Deploy",
+            "type": "shell",
+            "windows": {
+                "command": "C:/Qt/6.9.3/msvc2022_64/bin/windeployqt.exe",
+                "args": [
+                    "--debug",
+                    "--qmldir",
+                    "${workspaceFolder}/qml",
+                    "${workspaceFolder}/build/Debug/xxMusic.exe"
+                ]
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
             "label": "Package: Build Release Installer",
             "dependsOn": [
                 "CMake: Build Release",
                 "Inno: Compile Installer"
             ],
             "dependsOrder": "sequence",
+            "windows": {},
             "group": "build",
             "problemMatcher": []
         },
         {
             "label": "Inno: Compile Installer",
             "type": "shell",
-            "command": "C:/Program Files (x86)/Inno Setup 6/ISCC.exe",
-            "args": [
-                "${workspaceFolder}/packaging/inno/xiaoxiong_music_player.iss"
-            ],
+            "windows": {
+                "command": "C:/Program Files (x86)/Inno Setup 6/ISCC.exe",
+                "args": [
+                    "${workspaceFolder}/packaging/inno/xiaoxiong_music_player.iss"
+                ]
+            },
             "group": "build",
             "problemMatcher": [],
             "presentation": {

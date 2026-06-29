@@ -1,0 +1,129 @@
+{
+    "version": 6,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 28,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "linux-debug",
+            "displayName": "Linux Debug (Ninja + Qt 6.9.3)",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_PREFIX_PATH": "$env{HOME}/Qt/6.9.3/gcc_64"
+            },
+            "environment": {
+                "QT_DIR": "$env{HOME}/Qt/6.9.3/gcc_64",
+                "PATH": "$env{HOME}/Qt/6.9.3/gcc_64/bin:$penv{PATH}"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            }
+        },
+        {
+            "name": "linux-release",
+            "displayName": "Linux Release (Ninja + Qt 6.9.3)",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_PREFIX_PATH": "$env{HOME}/Qt/6.9.3/gcc_64"
+            },
+            "environment": {
+                "QT_DIR": "$env{HOME}/Qt/6.9.3/gcc_64",
+                "PATH": "$env{HOME}/Qt/6.9.3/gcc_64/bin:$penv{PATH}"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            }
+        },
+        {
+            "name": "windows-debug",
+            "displayName": "Windows Debug (VS2022 + Qt 6.9.3)",
+            "generator": "Visual Studio 17 2022",
+            "architecture": {
+                "value": "x64",
+                "strategy": "set"
+            },
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_PREFIX_PATH": "C:/Qt/6.9.3/msvc2022_64"
+            },
+            "environment": {
+                "QT_DIR": "C:/Qt/6.9.3/msvc2022_64",
+                "PATH": "C:/Qt/6.9.3/msvc2022_64/bin;$penv{PATH}"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
+        },
+        {
+            "name": "windows-release",
+            "displayName": "Windows Release (VS2022 + Qt 6.9.3)",
+            "generator": "Visual Studio 17 2022",
+            "architecture": {
+                "value": "x64",
+                "strategy": "set"
+            },
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_PREFIX_PATH": "C:/Qt/6.9.3/msvc2022_64"
+            },
+            "environment": {
+                "QT_DIR": "C:/Qt/6.9.3/msvc2022_64",
+                "PATH": "C:/Qt/6.9.3/msvc2022_64/bin;$penv{PATH}"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "linux-debug",
+            "displayName": "Linux Debug",
+            "configurePreset": "linux-debug"
+        },
+        {
+            "name": "linux-release",
+            "displayName": "Linux Release",
+            "configurePreset": "linux-release"
+        },
+        {
+            "name": "windows-debug",
+            "displayName": "Windows Debug",
+            "configurePreset": "windows-debug",
+            "configuration": "Debug"
+        },
+        {
+            "name": "windows-release",
+            "displayName": "Windows Release",
+            "configurePreset": "windows-release",
+            "configuration": "Release"
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "linux-debug",
+            "displayName": "Linux Debug",
+            "configurePreset": "linux-debug"
+        },
+        {
+            "name": "windows-debug",
+            "displayName": "Windows Debug",
+            "configurePreset": "windows-debug",
+            "configuration": "Debug"
+        }
+    ]
+}

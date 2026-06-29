@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.3.3)
+cmake_minimum_required(VERSION 3.28)
 
 project(xiaoxiong_music_player LANGUAGES CXX)
 
@@ -15,8 +15,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 if(NOT CMAKE_PREFIX_PATH)
     if(DEFINED ENV{QT_DIR})
         set(CMAKE_PREFIX_PATH "$ENV{QT_DIR}")
-    else()
+    elseif(WIN32)
         set(CMAKE_PREFIX_PATH "C:/Qt/6.9.3/msvc2022_64")
+    elseif(DEFINED ENV{HOME})
+        set(CMAKE_PREFIX_PATH "$ENV{HOME}/Qt/6.9.3/gcc_64")
     endif()
 endif()
 message(STATUS "使用的 Qt 路径 (CMAKE_PREFIX_PATH): ${CMAKE_PREFIX_PATH}")
@@ -130,10 +132,12 @@ qt_add_executable(xxMusic
 )
 
 # Debug 构建使用控制台子系统，便于 qDebug()/std::cout 输出到终端
-set_target_properties(xxMusic PROPERTIES
-    WIN32_EXECUTABLE $<NOT:$<CONFIG:Debug>>
-    AUTOUIC OFF
-)
+set_target_properties(xxMusic PROPERTIES AUTOUIC OFF)
+if(WIN32)
+    set_target_properties(xxMusic PROPERTIES
+        WIN32_EXECUTABLE $<NOT:$<CONFIG:Debug>>
+    )
+endif()
 
 # 将 QML 注册为内嵌模块，运行时通过 qrc:/XiaoxiongMusic/... 加载
 qt_add_qml_module(xxMusic
@@ -238,15 +242,15 @@ if(WIN32)
     target_link_libraries(xxMusic PRIVATE windowsapp propsys shell32 ole32)
 endif()
 
-# 定位 windeployqt（随 Qt 一起安装，位于 Qt 的 bin 目录）
-# 直接对 exe 调用 windeployqt 会把所有依赖平铺部署到 exe 同目录，
-# 避免 qt_generate_deploy_qml_app_script 把核心 DLL 放进 bin/ 子目录导致运行时找不到。
-find_program(WINDEPLOYQT_EXECUTABLE
-    NAMES windeployqt
-    HINTS "${CMAKE_PREFIX_PATH}/bin"
-)
-
 if(WIN32)
+    # 定位 windeployqt（随 Qt 一起安装，位于 Qt 的 bin 目录）
+    # 直接对 exe 调用 windeployqt 会把所有依赖平铺部署到 exe 同目录，
+    # 避免 qt_generate_deploy_qml_app_script 把核心 DLL 放进 bin/ 子目录导致运行时找不到。
+    find_program(WINDEPLOYQT_EXECUTABLE
+        NAMES windeployqt
+        HINTS "${CMAKE_PREFIX_PATH}/bin"
+    )
+
     add_custom_command(TARGET xxMusic POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "$<TARGET_FILE:tag>"
@@ -255,29 +259,44 @@ if(WIN32)
         COMMENT "Copying TagLib DLLs next to xxMusic..."
         VERBATIM
     )
-endif()
 
-if(WINDEPLOYQT_EXECUTABLE)
-    # 每次编译后自动把 Qt / QML 依赖平铺部署到 exe 同目录（如 build/Debug/）
+    if(WINDEPLOYQT_EXECUTABLE)
+        # 每次编译后自动把 Qt / QML 依赖平铺部署到 exe 同目录（如 build/Debug/）
+        add_custom_command(TARGET xxMusic POST_BUILD
+            COMMAND "${WINDEPLOYQT_EXECUTABLE}"
+                $<IF:$<CONFIG:Debug>,--debug,--release>
+                --qmldir "${CMAKE_CURRENT_SOURCE_DIR}/qml"
+                --no-translations
+                --no-system-d3d-compiler
+                "$<TARGET_FILE:xxMusic>"
+            COMMENT "Deploying Qt and QML dependencies via windeployqt..."
+            VERBATIM
+        )
+    else()
+        message(WARNING
+            "未找到 windeployqt，跳过自动部署。运行 exe 前请手动执行 windeployqt，"
+            "或确认 CMAKE_PREFIX_PATH 指向正确的 Qt 安装目录。")
+    endif()
+elseif(UNIX AND NOT APPLE)
     add_custom_command(TARGET xxMusic POST_BUILD
-        COMMAND "${WINDEPLOYQT_EXECUTABLE}"
-            $<IF:$<CONFIG:Debug>,--debug,--release>
-            --qmldir "${CMAKE_CURRENT_SOURCE_DIR}/qml"
-            --no-translations
-            --no-system-d3d-compiler
-            "$<TARGET_FILE:xxMusic>"
-        COMMENT "Deploying Qt and QML dependencies via windeployqt..."
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "$<TARGET_FILE:tag>"
+            "$<TARGET_FILE:tag_c>"
+            "$<TARGET_FILE_DIR:xxMusic>"
+        COMMENT "Copying TagLib shared libraries next to xxMusic..."
         VERBATIM
     )
-else()
-    message(WARNING
-        "未找到 windeployqt，跳过自动部署。运行 exe 前请手动执行 windeployqt，"
-        "或确认 CMAKE_PREFIX_PATH 指向正确的 Qt 安装目录。")
 endif()
 
 # ===== 测试分区占位 =====
 include(CTest)
 if(BUILD_TESTING)
+    if(WIN32)
+        set(_xxmusic_path_sep "$<SEMICOLON>")
+    else()
+        set(_xxmusic_path_sep ":")
+    endif()
+
     find_package(Qt6 REQUIRED COMPONENTS Test)
 
     qt_add_executable(test_lyric_parser
@@ -291,7 +310,7 @@ if(BUILD_TESTING)
     add_test(
         NAME test_lyric_parser
         COMMAND ${CMAKE_COMMAND} -E env
-            "PATH=${CMAKE_PREFIX_PATH}/bin$<SEMICOLON>$<TARGET_FILE_DIR:xxMusic>/bin$<SEMICOLON>$<TARGET_FILE_DIR:test_lyric_parser>$<SEMICOLON>$ENV{PATH}"
+            "PATH=${CMAKE_PREFIX_PATH}/bin${_xxmusic_path_sep}$<TARGET_FILE_DIR:xxMusic>/bin${_xxmusic_path_sep}$<TARGET_FILE_DIR:test_lyric_parser>${_xxmusic_path_sep}$ENV{PATH}"
             $<TARGET_FILE:test_lyric_parser>
     )
 
@@ -306,7 +325,7 @@ if(BUILD_TESTING)
     add_test(
         NAME test_playlist_service
         COMMAND ${CMAKE_COMMAND} -E env
-            "PATH=${CMAKE_PREFIX_PATH}/bin$<SEMICOLON>$<TARGET_FILE_DIR:xxMusic>/bin$<SEMICOLON>$<TARGET_FILE_DIR:test_playlist_service>$<SEMICOLON>$ENV{PATH}"
+            "PATH=${CMAKE_PREFIX_PATH}/bin${_xxmusic_path_sep}$<TARGET_FILE_DIR:xxMusic>/bin${_xxmusic_path_sep}$<TARGET_FILE_DIR:test_playlist_service>${_xxmusic_path_sep}$ENV{PATH}"
             $<TARGET_FILE:test_playlist_service>
     )
 
@@ -321,7 +340,7 @@ if(BUILD_TESTING)
     add_test(
         NAME test_audio_spectrum_analyzer
         COMMAND ${CMAKE_COMMAND} -E env
-            "PATH=${CMAKE_PREFIX_PATH}/bin$<SEMICOLON>$<TARGET_FILE_DIR:xxMusic>/bin$<SEMICOLON>$<TARGET_FILE_DIR:test_audio_spectrum_analyzer>$<SEMICOLON>$ENV{PATH}"
+            "PATH=${CMAKE_PREFIX_PATH}/bin${_xxmusic_path_sep}$<TARGET_FILE_DIR:xxMusic>/bin${_xxmusic_path_sep}$<TARGET_FILE_DIR:test_audio_spectrum_analyzer>${_xxmusic_path_sep}$ENV{PATH}"
             $<TARGET_FILE:test_audio_spectrum_analyzer>
     )
 endif()

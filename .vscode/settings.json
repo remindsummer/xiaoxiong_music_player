@@ -1,15 +1,16 @@
 {
-    "cmake.configureSettings": {
-        "CMAKE_PREFIX_PATH": "C:/Qt/6.9.3/msvc2022_64"
-    },
-    "cmake.buildDirectory": "${workspaceFolder}/build",
-    "cmake.generator": "Visual Studio 17 2022",
-    "cmake.platform": "x64",
-    "cmake.buildConfig": "Debug",
+    "cmake.useCMakePresets": "always",
+    "cmake.automaticallySelectConfigurePreset": true,
     "cmake.configureOnOpen": true,
+    "cmake.buildDirectory": "${workspaceFolder}/build",
     "cmake.sourceDirectory": "${workspaceFolder}",
     "terminal.integrated.env.windows": {
+        "QT_DIR": "C:/Qt/6.9.3/msvc2022_64",
         "PATH": "C:/Qt/6.9.3/msvc2022_64/bin;${env:PATH}"
+    },
+    "terminal.integrated.env.linux": {
+        "QT_DIR": "${env:HOME}/Qt/6.9.3/gcc_64",
+        "PATH": "${env:HOME}/Qt/6.9.3/gcc_64/bin:${env:HOME}/.local/bin:${env:PATH}"
     },
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
     "C_Cpp.default.cppStandard": "c++17",
