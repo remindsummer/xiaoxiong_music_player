@@ -14,10 +14,10 @@ MetingStreamResolver::MetingStreamResolver(QObject *parent)
 
 void MetingStreamResolver::resolve(const QString &streamApiUrl)
 {
-    if (m_reply) {
-        m_reply->abort();
-        m_reply->deleteLater();
+    if (QNetworkReply *staleReply = m_reply) {
         m_reply = nullptr;
+        staleReply->abort();
+        staleReply->deleteLater();
     }
 
     const QUrl apiUrl = MetingApi::rewriteServiceUrl(QUrl(streamApiUrl.trimmed()));

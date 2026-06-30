@@ -51,6 +51,7 @@ bool looksLikeMetingServiceUrl(const QUrl &url)
 QStringList defaultApiBases()
 {
     return {
+        QStringLiteral("https://music-api.shinegh.cn/api"),
         QStringLiteral("https://meting-api-omega.vercel.app/api"),
         QStringLiteral("https://api.injahow.cn/meting"),
         QStringLiteral("https://meting.elysium-stack.cn/api"),
@@ -59,7 +60,7 @@ QStringList defaultApiBases()
 
 QStringList ensureWorkingApiMirrors(const QStringList &bases)
 {
-    static const QString kPrimaryMirror = QStringLiteral("https://meting-api-omega.vercel.app/api");
+    static const QString kPrimaryMirror = QStringLiteral("https://music-api.shinegh.cn/api");
     for (const QString &base : bases) {
         if (normalizeApiBase(base) == kPrimaryMirror) {
             return bases;

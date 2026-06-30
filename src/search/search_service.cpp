@@ -165,12 +165,11 @@ void SearchService::searchOnline(const QString &keyword, const QString &server)
 
 void SearchService::cancelOnlineSearch()
 {
-    if (!m_currentReply) {
-        return;
+    if (QNetworkReply *staleReply = m_currentReply) {
+        m_currentReply = nullptr;
+        staleReply->abort();
+        staleReply->deleteLater();
     }
-    m_currentReply->abort();
-    m_currentReply->deleteLater();
-    m_currentReply = nullptr;
 }
 
 void SearchService::clearOnlineResults()

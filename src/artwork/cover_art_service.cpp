@@ -125,10 +125,10 @@ void CoverArtService::startDownload(const QString &trackKey, const QUrl &url)
         return;
     }
 
-    if (m_reply) {
-        m_reply->abort();
-        m_reply->deleteLater();
+    if (QNetworkReply *staleReply = m_reply) {
         m_reply = nullptr;
+        staleReply->abort();
+        staleReply->deleteLater();
     }
 
     m_pendingTrackKey = trackKey;

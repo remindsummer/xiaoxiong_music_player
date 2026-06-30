@@ -20,6 +20,7 @@ Rectangle {
     property var playlistChoices: []
     property var pendingTrack: null
     property int libraryTabIndex: 0
+    property int libraryTabSlideDirection: 1
     property var onlineTracks: []
     readonly property var libraryRepository: root.resolveControllerService(["libraryService", "libraryRepository"], "LibraryRepository")
     readonly property var searchService: root.resolveControllerService(["searchService", "search"], "SearchService")
@@ -266,53 +267,27 @@ Rectangle {
             Layout.fillWidth: true
             spacing: theme.space2
 
-            Button {
+            Components.PillTabButton {
                 text: qsTr("本地曲库")
-                hoverEnabled: true
-                font.family: theme.fontFamily
-                font.pixelSize: theme.fontBody
-                onClicked: root.libraryTabIndex = 0
-                background: Rectangle {
-                    radius: theme.radiusXs
-                    color: root.libraryTabIndex === 0
-                           ? theme.colorPrimary
-                           : (parent.down || parent.hovered ? theme.colorBgHover : "transparent")
-                    border.width: root.libraryTabIndex === 0 ? 0 : 1
-                    border.color: theme.colorBorderDefault
-                }
-                contentItem: Label {
-                    text: parent.text
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    color: root.libraryTabIndex === 0 ? "#ffffff" : theme.colorTextPrimary
-                    font.family: theme.fontFamily
-                    font.pixelSize: theme.fontBody
-                    font.weight: root.libraryTabIndex === 0 ? 600 : 400
+                tabSelected: root.libraryTabIndex === 0
+                onClicked: {
+                    if (root.libraryTabIndex === 0) {
+                        return
+                    }
+                    root.libraryTabSlideDirection = 0 > root.libraryTabIndex ? 1 : -1
+                    root.libraryTabIndex = 0
                 }
             }
 
-            Button {
+            Components.PillTabButton {
                 text: qsTr("在线搜歌")
-                hoverEnabled: true
-                font.family: theme.fontFamily
-                font.pixelSize: theme.fontBody
-                onClicked: root.libraryTabIndex = 1
-                background: Rectangle {
-                    radius: theme.radiusXs
-                    color: root.libraryTabIndex === 1
-                           ? theme.colorPrimary
-                           : (parent.down || parent.hovered ? theme.colorBgHover : "transparent")
-                    border.width: root.libraryTabIndex === 1 ? 0 : 1
-                    border.color: theme.colorBorderDefault
-                }
-                contentItem: Label {
-                    text: parent.text
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    color: root.libraryTabIndex === 1 ? "#ffffff" : theme.colorTextPrimary
-                    font.family: theme.fontFamily
-                    font.pixelSize: theme.fontBody
-                    font.weight: root.libraryTabIndex === 1 ? 600 : 400
+                tabSelected: root.libraryTabIndex === 1
+                onClicked: {
+                    if (root.libraryTabIndex === 1) {
+                        return
+                    }
+                    root.libraryTabSlideDirection = 1 > root.libraryTabIndex ? 1 : -1
+                    root.libraryTabIndex = 1
                 }
             }
 
@@ -577,10 +552,42 @@ Rectangle {
         }
 
         Components.GlassPanel {
+            id: trackListPanel
             Layout.fillWidth: true
             Layout.fillHeight: true
             cornerRadius: theme.radiusMd
             padding: theme.space2
+            opacity: trackListPanelOpacity
+
+            property real trackListPanelOpacity: 1
+
+            SequentialAnimation {
+                id: tabContentFade
+                running: false
+
+                NumberAnimation {
+                    target: trackListPanel
+                    property: "trackListPanelOpacity"
+                    to: 0.72
+                    duration: theme.motionFast
+                    easing.type: Easing.OutCubic
+                }
+
+                NumberAnimation {
+                    target: trackListPanel
+                    property: "trackListPanelOpacity"
+                    to: 1
+                    duration: theme.motionNormal
+                    easing.type: Easing.OutCubic
+                }
+            }
+
+            Connections {
+                target: root
+                function onLibraryTabIndexChanged() {
+                    tabContentFade.restart()
+                }
+            }
 
             ListView {
                 id: trackList

@@ -58,10 +58,10 @@ void LibraryCoverPrefetcher::fetchNow(const QString &path, const QString &title,
 
 void LibraryCoverPrefetcher::cancelInFlight()
 {
-    if (m_metingReply) {
-        m_metingReply->abort();
-        m_metingReply->deleteLater();
+    if (QNetworkReply *staleReply = m_metingReply) {
         m_metingReply = nullptr;
+        staleReply->abort();
+        staleReply->deleteLater();
     }
 }
 
@@ -107,10 +107,10 @@ bool LibraryCoverPrefetcher::isQueuedOrCurrent(const QString &path) const
 
 void LibraryCoverPrefetcher::processNext()
 {
-    if (m_metingReply) {
-        m_metingReply->abort();
-        m_metingReply->deleteLater();
+    if (QNetworkReply *staleReply = m_metingReply) {
         m_metingReply = nullptr;
+        staleReply->abort();
+        staleReply->deleteLater();
     }
 
     if (m_queue.isEmpty()) {

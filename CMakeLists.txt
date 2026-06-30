@@ -160,6 +160,9 @@ qt_add_qml_module(xxMusic
         qml/components/RoundedCover.qml
         qml/components/ThemedSlider.qml
         qml/components/GlassPanel.qml
+        qml/components/SidebarNavItem.qml
+        qml/components/PillTabButton.qml
+        qml/components/AnimatedPageSlot.qml
         qml/components/PrimaryButton.qml
         qml/components/GhostButton.qml
         qml/components/CloseChoiceDialog.qml
@@ -342,5 +345,31 @@ if(BUILD_TESTING)
         COMMAND ${CMAKE_COMMAND} -E env
             "PATH=${CMAKE_PREFIX_PATH}/bin${_xxmusic_path_sep}$<TARGET_FILE_DIR:xxMusic>/bin${_xxmusic_path_sep}$<TARGET_FILE_DIR:test_audio_spectrum_analyzer>${_xxmusic_path_sep}$ENV{PATH}"
             $<TARGET_FILE:test_audio_spectrum_analyzer>
+    )
+
+    qt_add_executable(test_online_download_flow
+        tests/unit/test_online_download_flow.cpp
+        src/download/online_download_service.cpp
+        src/network/meting_stream_resolver.cpp
+        src/network/meting_api.cpp
+        src/library/library_repository.cpp
+        src/library/library_scanner.cpp
+        src/library/library_metadata_resolver.cpp
+        src/library/audio_tag_reader.cpp
+        src/artwork/cover_art_service.cpp
+        src/artwork/library_cover_prefetcher.cpp
+        src/settings/settings_service.cpp
+    )
+    target_link_libraries(test_online_download_flow PRIVATE
+        Qt6::Core
+        Qt6::Network
+        Qt6::Test
+        TagLib::tag_c
+    )
+    add_test(
+        NAME test_online_download_flow
+        COMMAND ${CMAKE_COMMAND} -E env
+            "PATH=${CMAKE_PREFIX_PATH}/bin${_xxmusic_path_sep}$<TARGET_FILE_DIR:xxMusic>/bin${_xxmusic_path_sep}$<TARGET_FILE_DIR:test_online_download_flow>${_xxmusic_path_sep}$ENV{PATH}"
+            $<TARGET_FILE:test_online_download_flow>
     )
 endif()

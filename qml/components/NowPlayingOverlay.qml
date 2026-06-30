@@ -9,6 +9,8 @@ Item {
     id: root
     required property var appController
 
+    property bool presentationActive: visible
+
     readonly property var playback: root.appController
                                     ? (root.appController.playbackService || root.appController.playback)
                                     : null
@@ -143,18 +145,18 @@ Item {
     }
 
     Rectangle {
+        id: panelBackground
         anchors.fill: parent
         radius: theme.radiusLg
         color: theme.colorBgPanel
         border.width: 1
         border.color: theme.surfaceGlassBorder
         clip: true
-    }
 
-    ColumnLayout {
-        anchors.fill: parent
-        anchors.margins: theme.space6
-        spacing: theme.space4
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: theme.space6
+            spacing: theme.space4
 
         RowLayout {
             Layout.fillWidth: true
@@ -319,9 +321,10 @@ Item {
             }
         }
     }
+    }
 
-    onVisibleChanged: {
-        if (!visible) {
+    onPresentationActiveChanged: {
+        if (!root.presentationActive) {
             return
         }
 

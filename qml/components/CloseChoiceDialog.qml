@@ -83,7 +83,7 @@ Dialog {
 
             PrimaryButton {
                 implicitHeight: 36
-                implicitWidth: Math.max(implicitWidth, 112)
+                Layout.minimumWidth: 112
                 text: qsTr("最小化到托盘")
                 onClicked: {
                     root.close()
@@ -93,7 +93,7 @@ Dialog {
 
             GhostButton {
                 implicitHeight: 36
-                implicitWidth: Math.max(implicitWidth, 88)
+                Layout.minimumWidth: 88
                 text: qsTr("退出")
                 onClicked: {
                     root.close()

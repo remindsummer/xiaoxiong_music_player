@@ -65,10 +65,10 @@ QString OnlineDownloadService::lastError() const
 
 void OnlineDownloadService::downloadTrack(const QVariantMap &track)
 {
-    if (m_downloadReply) {
-        m_downloadReply->abort();
-        m_downloadReply->deleteLater();
+    if (QNetworkReply *staleReply = m_downloadReply) {
         m_downloadReply = nullptr;
+        staleReply->abort();
+        staleReply->deleteLater();
     }
 
     if (!m_settings) {
@@ -142,10 +142,10 @@ void OnlineDownloadService::startFileDownload(const QUrl &streamUrl,
         return;
     }
 
-    if (m_downloadReply) {
-        m_downloadReply->abort();
-        m_downloadReply->deleteLater();
+    if (QNetworkReply *staleReply = m_downloadReply) {
         m_downloadReply = nullptr;
+        staleReply->abort();
+        staleReply->deleteLater();
     }
 
     QNetworkRequest request(streamUrl);

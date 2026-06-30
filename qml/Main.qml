@@ -51,6 +51,8 @@ ApplicationWindow {
 
     property int currentPageIndex: 0
 
+    property int pageSlideDirection: 1
+
     property bool nowPlayingVisible: false
 
     readonly property bool trayAvailable: appController
@@ -154,7 +156,23 @@ ApplicationWindow {
 
     function toggleNowPlaying() {
 
-        root.nowPlayingVisible = !root.nowPlayingVisible
+        if (nowPlayingLayer.overlayAnimating) {
+
+            return
+
+        }
+
+        if (root.nowPlayingVisible) {
+
+            nowPlayingLayer.closeOverlay()
+
+        } else {
+
+            root.nowPlayingVisible = true
+
+            nowPlayingLayer.openOverlay()
+
+        }
 
     }
 
@@ -298,130 +316,26 @@ ApplicationWindow {
 
                             model: root.navItems
 
-
-
-                            delegate: Item {
-
-                                id: navItem
+                            delegate: Components.SidebarNavItem {
 
                                 required property int index
 
                                 required property var modelData
 
-
-
                                 Layout.fillWidth: true
 
-                                implicitHeight: 44
+                                iconText: modelData.icon
 
+                                labelText: modelData.name
 
+                                selected: root.currentPageIndex === index
 
-                                property bool hovered: false
-
-                                property bool pressed: false
-
-                                readonly property bool selected: root.currentPageIndex === navItem.index
-
-
-
-                                Rectangle {
-
-                                    anchors.fill: parent
-
-                                    radius: theme.radiusSm
-
-                                    color: navItem.selected
-
-                                           ? theme.colorPrimary
-
-                                           : (navItem.pressed
-
-                                              ? theme.colorBgPressed
-
-                                              : (navItem.hovered ? theme.colorBgHover : "transparent"))
-
-                                    border.width: 0
-
-
-
-                                    Behavior on color {
-
-                                        ColorAnimation { duration: theme.motionFast; easing.type: Easing.OutCubic }
-
+                                onClicked: {
+                                    if (index === root.currentPageIndex) {
+                                        return
                                     }
-
-                                }
-
-
-
-                                RowLayout {
-
-                                    anchors.fill: parent
-
-                                    anchors.leftMargin: theme.space3
-
-                                    anchors.rightMargin: theme.space3
-
-                                    spacing: theme.space3
-
-
-
-                                    Label {
-
-                                        text: navItem.modelData.icon
-
-                                        color: navItem.selected ? "#ffffff" : theme.colorTextSecondary
-
-                                        font.pixelSize: theme.fontBody
-
-                                        font.family: theme.fontFamily
-
-                                    }
-
-
-
-                                    Label {
-
-                                        Layout.fillWidth: true
-
-                                        text: navItem.modelData.name
-
-                                        color: navItem.selected ? "#ffffff" : theme.colorTextPrimary
-
-                                        font.pixelSize: theme.fontBody
-
-                                        font.family: theme.fontFamily
-
-                                        font.weight: navItem.selected ? 600 : 400
-
-                                    }
-
-                                }
-
-
-
-                                MouseArea {
-
-                                    anchors.fill: parent
-
-                                    hoverEnabled: true
-
-                                    onEntered: navItem.hovered = true
-
-                                    onExited: {
-
-                                        navItem.hovered = false
-
-                                        navItem.pressed = false
-
-                                    }
-
-                                    onPressed: navItem.pressed = true
-
-                                    onReleased: navItem.pressed = false
-
-                                    onClicked: root.currentPageIndex = navItem.index
-
+                                    root.pageSlideDirection = index > root.currentPageIndex ? 1 : -1
+                                    root.currentPageIndex = index
                                 }
 
                             }
@@ -450,43 +364,75 @@ ApplicationWindow {
 
 
 
-                    StackLayout {
+                    Item {
 
                         anchors.fill: parent
 
-                        currentIndex: root.currentPageIndex
+                        clip: true
 
+                        Components.AnimatedPageSlot {
 
+                            anchors.fill: parent
 
-                        Pages.LibraryPage {
+                            active: root.currentPageIndex === 0
 
-                            id: librarySection
+                            slideDirection: root.pageSlideDirection
 
-                            appController: root.controller
+                            Pages.LibraryPage {
 
-                        }
+                                id: librarySection
 
+                                appController: root.controller
 
-
-                        Pages.PlaylistPage {
-
-                            appController: root.controller
-
-                        }
-
-
-
-                        Pages.FavoritesPage {
-
-                            appController: root.controller
+                            }
 
                         }
 
+                        Components.AnimatedPageSlot {
 
+                            anchors.fill: parent
 
-                        Pages.SettingsPage {
+                            active: root.currentPageIndex === 1
 
-                            appController: root.controller
+                            slideDirection: root.pageSlideDirection
+
+                            Pages.PlaylistPage {
+
+                                appController: root.controller
+
+                            }
+
+                        }
+
+                        Components.AnimatedPageSlot {
+
+                            anchors.fill: parent
+
+                            active: root.currentPageIndex === 2
+
+                            slideDirection: root.pageSlideDirection
+
+                            Pages.FavoritesPage {
+
+                                appController: root.controller
+
+                            }
+
+                        }
+
+                        Components.AnimatedPageSlot {
+
+                            anchors.fill: parent
+
+                            active: root.currentPageIndex === 3
+
+                            slideDirection: root.pageSlideDirection
+
+                            Pages.SettingsPage {
+
+                                appController: root.controller
+
+                            }
 
                         }
 
@@ -498,19 +444,169 @@ ApplicationWindow {
 
 
 
-            Components.NowPlayingOverlay {
+            Item {
 
-                id: nowPlayingOverlay
+                id: nowPlayingLayer
 
                 anchors.fill: parent
 
-                visible: root.nowPlayingVisible
-
                 z: 20
 
-                appController: root.controller
+                clip: true
 
-                onCloseRequested: root.nowPlayingVisible = false
+                property bool overlayAnimating: false
+
+                property real panelSlideY: 0
+
+                visible: root.nowPlayingVisible || overlayAnimating || panelSlideY < height - 0.5
+
+                Rectangle {
+
+                    id: lyricsDimOverlay
+
+                    anchors.fill: parent
+
+                    color: theme.colorBgApp
+
+                    opacity: 0
+
+                    z: 0
+
+                    MouseArea {
+
+                        anchors.fill: parent
+
+                        onClicked: root.toggleNowPlaying()
+
+                    }
+
+                }
+
+                Components.NowPlayingOverlay {
+
+                    id: nowPlayingOverlay
+
+                    z: 1
+
+                    width: parent.width
+
+                    height: parent.height
+
+                    x: 0
+
+                    y: panelSlideY
+
+                    appController: root.controller
+
+                    presentationActive: root.nowPlayingVisible && panelSlideY < 1
+
+                    onCloseRequested: root.toggleNowPlaying()
+
+                }
+
+                NumberAnimation {
+
+                    id: lyricsPanelEnterAnim
+
+                    target: nowPlayingLayer
+
+                    property: "panelSlideY"
+
+                    duration: theme.motionSlow
+
+                    easing.type: Easing.OutCubic
+
+                    onStarted: nowPlayingLayer.overlayAnimating = true
+
+                    onStopped: nowPlayingLayer.overlayAnimating = false
+
+                }
+
+                NumberAnimation {
+
+                    id: lyricsPanelExitAnim
+
+                    target: nowPlayingLayer
+
+                    property: "panelSlideY"
+
+                    duration: theme.motionSlow
+
+                    easing.type: Easing.InCubic
+
+                    onStarted: nowPlayingLayer.overlayAnimating = true
+
+                    onFinished: {
+                        nowPlayingLayer.overlayAnimating = false
+                        root.nowPlayingVisible = false
+                    }
+
+                }
+
+                NumberAnimation {
+
+                    id: lyricsDimEnterAnim
+
+                    target: lyricsDimOverlay
+
+                    property: "opacity"
+
+                    duration: theme.motionNormal
+
+                    easing.type: Easing.OutCubic
+
+                }
+
+                NumberAnimation {
+
+                    id: lyricsDimExitAnim
+
+                    target: lyricsDimOverlay
+
+                    property: "opacity"
+
+                    duration: theme.motionNormal
+
+                    easing.type: Easing.InCubic
+
+                }
+
+                function openOverlay() {
+                    lyricsPanelEnterAnim.stop()
+                    lyricsPanelExitAnim.stop()
+                    lyricsDimEnterAnim.stop()
+                    lyricsDimExitAnim.stop()
+
+                    panelSlideY = height
+                    lyricsDimOverlay.opacity = 0
+
+                    lyricsPanelEnterAnim.from = height
+                    lyricsPanelEnterAnim.to = 0
+                    lyricsPanelEnterAnim.start()
+
+                    lyricsDimEnterAnim.from = 0
+                    lyricsDimEnterAnim.to = 0.55
+                    lyricsDimEnterAnim.start()
+                }
+
+                function closeOverlay() {
+                    lyricsPanelEnterAnim.stop()
+                    lyricsPanelExitAnim.stop()
+                    lyricsDimEnterAnim.stop()
+                    lyricsDimExitAnim.stop()
+
+                    lyricsPanelExitAnim.from = panelSlideY
+                    lyricsPanelExitAnim.to = height
+                    lyricsPanelExitAnim.start()
+
+                    lyricsDimExitAnim.from = lyricsDimOverlay.opacity
+                    lyricsDimExitAnim.to = 0
+                    lyricsDimExitAnim.start()
+                }
+
+                Component.onCompleted: {
+                    panelSlideY = height
+                }
 
             }
 

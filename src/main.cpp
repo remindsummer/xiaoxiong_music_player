@@ -18,8 +18,71 @@
 #include "app/windows_app_identity.h"
 #endif
 
+#ifdef Q_OS_LINUX
+#include <QFile>
+#include <QFileInfo>
+
+namespace {
+
+bool prependQtPluginPath(const QString &pluginsRoot)
+{
+    if (pluginsRoot.isEmpty() || !QFileInfo::exists(pluginsRoot)) {
+        return false;
+    }
+    const QByteArray pathBytes = pluginsRoot.toUtf8();
+    const QByteArray existing = qgetenv("QT_PLUGIN_PATH");
+    if (existing.isEmpty()) {
+        qputenv("QT_PLUGIN_PATH", pathBytes);
+    } else if (!existing.split(':').contains(pathBytes)) {
+        qputenv("QT_PLUGIN_PATH", pathBytes + ':' + existing);
+    }
+    return true;
+}
+
+bool hasFcitx5PluginInDir(const QString &platformInputContextsDir)
+{
+    return QFile::exists(platformInputContextsDir
+                         + QStringLiteral("/libfcitx5platforminputcontextplugin.so"));
+}
+
+void setupLinuxInputMethod(const char *argv0)
+{
+    // apt 自带的 fcitx5 Qt 插件链接系统 Qt 6.4，与 Qt 在线安装器版本 ABI 不兼容。
+    // 仅加载与当前 Qt 同版本编译的插件（见 scripts/build-fcitx5-qt-plugin.sh）。
+    const QString appDir = QFileInfo(QString::fromLocal8Bit(argv0)).absolutePath();
+    const QString qtDir = QString::fromLocal8Bit(qgetenv("QT_DIR"));
+
+    const QStringList fcitxPluginDirs = {
+        appDir + QStringLiteral("/platforminputcontexts"),
+        qtDir + QStringLiteral("/plugins/platforminputcontexts"),
+    };
+
+    for (const QString &dir : fcitxPluginDirs) {
+        if (!hasFcitx5PluginInDir(dir)) {
+            continue;
+        }
+        if (prependQtPluginPath(QFileInfo(dir).absolutePath())) {
+            qputenv("QT_IM_MODULE", QByteArray("fcitx"));
+            qInfo().noquote() << QStringLiteral("已启用 fcitx5 输入法插件：%1").arg(dir);
+            return;
+        }
+    }
+
+    qWarning().noquote()
+        << QStringLiteral(
+               "未找到与当前 Qt 版本匹配的 fcitx5 插件，文本框可能无法输入中文。"
+               "请运行 scripts/build-fcitx5-qt-plugin.sh 构建并安装插件。");
+}
+
+} // namespace
+#endif
+
 int main(int argc, char *argv[])
 {
+#ifdef Q_OS_LINUX
+    setupLinuxInputMethod(argv[0]);
+#endif
+
 #ifdef Q_OS_WIN
     QGuiApplication::setDesktopFileName(QStringLiteral("Xiaoxiong.XiaoxiongMusicPlayer"));
 #endif
