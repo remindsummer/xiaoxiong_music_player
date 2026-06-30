@@ -87,3 +87,4 @@ ehthumbs.db
 *.tmp
 *.temp
 *~
+third_party/fcitx5-qt
